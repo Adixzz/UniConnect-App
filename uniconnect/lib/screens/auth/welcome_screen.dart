@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import './student_login.dart';
+import './lecturer_login.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -56,9 +58,12 @@ class WelcomeScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: () {
-                    print("Student Login Tapped");
-                  },
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const StudentLoginScreen()),
+                  );
+                },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryColor,
                     shape: RoundedRectangleBorder(
@@ -85,9 +90,12 @@ class WelcomeScreen extends StatelessWidget {
                 height: 56,
                 child: OutlinedButton(
                   onPressed: () {
-                    print("Lecturer Login Tapped");
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const LecturerLoginScreen()),
+                    );
                   },
-                  style: OutlinedButton.styleFrom(
+                    style: OutlinedButton.styleFrom(
                     foregroundColor: primaryColor,
                     side: BorderSide(color: primaryColor, width: 2),
                     shape: RoundedRectangleBorder(
