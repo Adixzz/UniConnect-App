@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
-import 'screens/auth/welcome_screen.dart';
-import 'firebase_options.dart'; // This import will finally work!
-import 'package:firebase_core/firebase_core.dart'; // 1. Add this import
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+
+// Import your new meeting request screen.
+// (Adjust the folder path if you didn't put it inside a 'screens' folder)
+import 'screens/student/meeting_request_screen.dart';
 
 void main() async {
-
+  // Ensure Flutter bindings are initialized before calling Firebase
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // 3. Connect to your specific Firebase project
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+
+  // Connect to your specific Firebase project
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   runApp(const MyApp());
 }
@@ -27,7 +28,8 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6C63FF)),
         useMaterial3: true,
       ),
-      home: const WelcomeScreen(),
+      // This tells the app to load your new screen immediately
+      home: const MeetingRequestScreen(),
     );
   }
 }
