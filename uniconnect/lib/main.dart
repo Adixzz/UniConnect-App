@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'screens/auth/welcome_screen.dart';
 import 'firebase_options.dart'; // This import will finally work!
 import 'package:firebase_core/firebase_core.dart'; // 1. Add this import
+import 'screens/student/student_home.dart';
 
 void main() async {
 
@@ -27,7 +28,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6C63FF)),
         useMaterial3: true,
       ),
-      home: const WelcomeScreen(),
+      home: const StudentHome(),
     );
   }
 }
