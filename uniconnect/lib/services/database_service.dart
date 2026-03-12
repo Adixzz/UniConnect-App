@@ -4,7 +4,6 @@ import '../models/user_model.dart';
 class DatabaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // Save or update user data
   Future<void> saveUser(UserModel user) async {
     try {
       await _db.collection('users').doc(user.uid).set(user.toMap());

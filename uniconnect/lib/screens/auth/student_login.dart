@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'student_register.dart';
+import '../../services/auth_service.dart'; 
 
 class StudentLoginScreen extends StatefulWidget {
   const StudentLoginScreen({super.key});
@@ -14,29 +14,23 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
 
+  final AuthService _authService = AuthService(); 
+
   Future<void> _login() async {
     setState(() => _isLoading = true);
-    try {
-      UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
 
-      // THE CHECK: Only let them in if they verified their email
-      if (!userCredential.user!.emailVerified) {
-        await FirebaseAuth.instance.signOut();
-        if (!mounted) return;
-        _showSnackBar("Please verify your email first. Check your inbox.");
-        return;
-      }
+    String? errorMessage = await _authService.loginStudent(
+      email: _emailController.text.trim(),
+      password: _passwordController.text.trim(),
+    );
 
-      // If verified, navigate to your Dashboard/Home here
+    if (mounted) setState(() => _isLoading = false); 
+
+    if (errorMessage == null) {
       _showSnackBar("Login Successful!");
-      
-    } on FirebaseAuthException catch (e) {
-      _showSnackBar(e.message ?? "Login Failed");
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      // Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const StudentHomeScreen()));
+    } else {
+      _showSnackBar(errorMessage);
     }
   }
 

@@ -3,7 +3,7 @@ class UserModel {
   final String name;
   final String email;
   final String studentId;
-  final String role; // 'student' or 'lecturer'
+  final String role;
 
   UserModel({
     required this.uid,
