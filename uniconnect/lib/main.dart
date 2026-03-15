@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:uniconnect/screens/lecturer/lecturer_request.dart';
+import 'package:uniconnect/screens/lecturer/lecturer_settings.dart';
 
 // Import your new meeting request screen.
 // (Adjust the folder path if you didn't put it inside a 'screens' folder)
@@ -29,7 +31,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       // This tells the app to load your new screen immediately
-      home: const MeetingRequestScreen(),
+      home: const LecturerSettingsScreen(),
     );
   }
 }
