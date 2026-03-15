@@ -1,11 +1,11 @@
-class UserModel {
+class StudentModel {
   final String uid;
   final String name;
   final String email;
   final String studentId;
   final String role;
 
-  UserModel({
+  StudentModel({
     required this.uid,
     required this.name,
     required this.email,
@@ -13,7 +13,6 @@ class UserModel {
     required this.role,
   });
 
-  // Convert a UserModel into a Map to save to Firestore
   Map<String, dynamic> toMap() {
     return {
       'uid': uid,
