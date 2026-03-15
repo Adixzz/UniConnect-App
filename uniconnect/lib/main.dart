@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:uniconnect/screens/student/student_home.dart';
 import 'screens/auth/welcome_screen.dart';
-import 'firebase_options.dart'; // This import will finally work!
-import 'package:firebase_core/firebase_core.dart'; // 1. Add this import
+import 'firebase_options.dart'; 
+import 'package:firebase_core/firebase_core.dart'; 
 import 'screens/student/lecturer_list_screen.dart';
+import 'screens/student/profile_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,7 +29,7 @@ class MyApp extends StatelessWidget {
       ),
 
       // home: const WelcomeScreen(),
-      home: const LecturerListPage(),
+      home: const  ProfileScreen(),
     );
   }
 }
