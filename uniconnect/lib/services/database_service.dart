@@ -95,4 +95,71 @@ class DatabaseService {
       return [];
     }
   }
+
+  // 9. Fetch ALL Lecturers (For Global Search)
+  Future<List<LecturerModel>> getAllLecturers() async {
+    try {
+      final snapshot = await _db.collection('lecturers').get();
+      return snapshot.docs
+          .map((doc) => LecturerModel.fromMap(doc.data())) // Ensure you have a fromMap in LecturerModel
+          .toList();
+    } catch (e) {
+      print("Error fetching all lecturers: $e");
+      return [];
+    }
+  }
+
+  // 10. Fetch Lecturers Filtered by Faculty & Module (Academic Path)
+  Future<List<LecturerModel>> getFilteredLecturers(String facultyCode, String moduleName) async {
+    try {
+      final snapshot = await _db.collection('lecturers')
+          .where('faculty', isEqualTo: facultyCode)
+          .where('modules', arrayContains: moduleName) // This works because your model uses a List<String>
+          .get();
+      
+      return snapshot.docs
+          .map((doc) => LecturerModel.fromMap(doc.data()))
+          .toList();
+    } catch (e) {
+      print("Error fetching filtered lecturers: $e");
+      return [];
+    }
+  }
+
+  // 11. Save Meeting Request
+  // I recommend creating a MeetingModel, but for now, we'll use a Map
+  Future<void> saveMeetingRequest({
+    required String studentUid,
+    required String lecturerUid,
+    required String lecturerName,
+    required String moduleName,
+    required String date,
+    required String time,
+    required String reason,
+  }) async {
+    try {
+      await _db.collection('meetings').add({
+        'studentUid': studentUid,
+        'lecturerUid': lecturerUid,
+        'lecturerName': lecturerName,
+        'moduleName': moduleName,
+        'date': date,
+        'time': time,
+        'reason': reason,
+        'status': 'Pending',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print("Error saving meeting request: $e");
+      rethrow;
+    }
+  }
+
+  // 12. Stream Meetings for the Student (Real-time updates for your UI)
+  Stream<QuerySnapshot> getStudentMeetings(String studentUid) {
+    return _db.collection('meetings')
+        .where('studentUid', isEqualTo: studentUid)
+        .orderBy('createdAt', descending: true)
+        .snapshots();
+  }
 }

@@ -35,4 +35,18 @@ class LecturerModel {
       'createdAt': DateTime.now().toIso8601String(),
     };
   }
+
+  factory LecturerModel.fromMap(Map<String, dynamic> map) {
+  return LecturerModel(
+    uid: map['uid'] ?? '',
+    name: map['name'] ?? '',
+    email: map['email'] ?? '',
+    staffId: map['staffId'] ?? '',
+    pin: map['pin'] ?? '',
+    faculty: map['faculty'] ?? '',
+    modules: List<String>.from(map['modules'] ?? []),
+    availability: map['availability'] ?? 'Not in Lecture',
+    role: map['role'] ?? 'lecturer',
+  );
+}
 }

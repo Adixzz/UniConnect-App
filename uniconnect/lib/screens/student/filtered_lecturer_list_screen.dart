@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/lecturer_model.dart';
+import '../../services/database_service.dart'; // Adjust path based on your project
+import 'meeting_details_screen.dart';
 
 class FilteredLecturerListScreen extends StatelessWidget {
   final String moduleName;
@@ -13,23 +15,6 @@ class FilteredLecturerListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // This list would usually be filtered from your global list or a Provider
-    final List<LecturerModel> allLecturers = [
-      LecturerModel(
-        uid: '1', name: 'Dr. Sarah Johnson', email: 's@u.com', staffId: 'L1', 
-        pin: '1', faculty: 'FOC', modules: ['Data Structures', 'Algorithms']
-      ),
-      LecturerModel(
-        uid: '2', name: 'Prof. Michael Chen', email: 'm@u.com', staffId: 'L2', 
-        pin: '2', faculty: 'FOC', modules: ['Mobile App Development']
-      ),
-    ];
-
-    // FILTER LOGIC: Match the selected module
-    final List<LecturerModel> filteredList = allLecturers
-        .where((l) => l.modules.contains(moduleName))
-        .toList();
-
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F9),
       appBar: AppBar(
@@ -42,16 +27,39 @@ class FilteredLecturerListScreen extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: filteredList.isEmpty 
-        ? _buildEmptyState()
-        : ListView.builder(
+      // Use FutureBuilder to fetch real data from Firestore
+      body: FutureBuilder<List<LecturerModel>>(
+        future: DatabaseService().getFilteredLecturers(facultyCode, moduleName),
+        builder: (context, snapshot) {
+          // 1. Show loading spinner while waiting for Firebase
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(color: Color(0xFF10B981)),
+            );
+          }
+
+          // 2. Handle errors
+          if (snapshot.hasError) {
+            return Center(child: Text("Error: ${snapshot.error}"));
+          }
+
+          // 3. Handle empty results
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return _buildEmptyState();
+          }
+
+          final List<LecturerModel> filteredList = snapshot.data!;
+
+          return ListView.builder(
             padding: const EdgeInsets.all(24),
             itemCount: filteredList.length,
             itemBuilder: (context, index) {
               final lecturer = filteredList[index];
               return _buildLecturerTile(context, lecturer);
             },
-          ),
+          );
+        },
+      ),
     );
   }
 
@@ -61,26 +69,52 @@ class FilteredLecturerListScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02), 
+            blurRadius: 10, 
+            offset: const Offset(0, 4)
+          )
+        ],
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
         leading: CircleAvatar(
+          radius: 25,
           backgroundColor: const Color(0xFF10B981).withOpacity(0.1),
-          child: Text(lecturer.name[0], style: const TextStyle(color: Color(0xFF10B981))),
+          child: Text(
+            lecturer.name[0].toUpperCase(), 
+            style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold)
+          ),
         ),
         title: Text(lecturer.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(lecturer.email),
-        trailing: const Icon(Icons.chevron_right),
+        subtitle: Text(lecturer.email, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+        trailing: const Icon(Icons.chevron_right, color: Colors.grey),
         onTap: () {
-          // NEXT: The final "Meeting Details" Input page
-          print("Requesting meeting with ${lecturer.name}");
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MeetingDetailsScreen(lecturer: lecturer),
+            ),
+          );
         },
       ),
     );
   }
 
   Widget _buildEmptyState() {
-    return const Center(child: Text("No lecturers found for this module."));
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.person_off_outlined, size: 64, color: Colors.grey.shade300),
+          const SizedBox(height: 16),
+          Text(
+            "No lecturers found for this module.",
+            style: TextStyle(color: Colors.grey.shade500, fontSize: 16),
+          ),
+        ],
+      ),
+    );
   }
 }
