@@ -43,7 +43,6 @@ class _AddAdminScreenState extends State<AddAdminScreen> {
 
     setState(() => _isLoading = true);
 
-    // hand off to AuthService — no Firebase code in this file
     String? errorMessage = await _authService.registerAdmin(
       name: name,
       email: email,

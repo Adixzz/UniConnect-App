@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:intl/intl.dart'; // Required for better date formatting
+import 'package:intl/intl.dart';
 
 class AvailabilityScreen extends StatefulWidget {
   const AvailabilityScreen({super.key});
@@ -14,7 +14,6 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay = DateTime.now();
 
-  // Updated list to store slots with specific dates
   final List<Map<String, String>> _mySlots = [
     {
       "time": "09:00 AM - 10:00 AM", 
@@ -33,7 +32,6 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     super.dispose();
   }
 
-  // 1. Professional Time Picker Sheet
   void _showAddSlotSheet() {
     showModalBottomSheet(
       context: context,
@@ -92,7 +90,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
                 height: 50,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1565C0), // Consistent primary blue
+                    backgroundColor: const Color(0xFF1565C0),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: () {
@@ -102,7 +100,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
                       _mySlots.add({
                         "time": "${_startTime.format(context)} - ${_endTime.format(context)}",
                         "note": _noteController.text.isEmpty ? "No notes" : _noteController.text,
-                        "date": DateFormat('dd/MM/yyyy').format(_selectedDay!), // Save specific date
+                        "date": DateFormat('dd/MM/yyyy').format(_selectedDay!),
                       });
                     });
                     _noteController.clear();
@@ -189,7 +187,6 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     );
   }
 
-  // 2. Updated Slot Tile with Date Display
   Widget _buildSlotTile(int index) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -210,7 +207,6 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 4),
-            // THE FIX: Showing the date on the card
             Text("Date: ${_mySlots[index]['date']}", style: const TextStyle(color: Colors.blue, fontSize: 13)),
             Text(_mySlots[index]['note']!, style: TextStyle(color: Colors.grey.shade600)),
           ],

@@ -84,7 +84,6 @@ class _AddLecturerScreenState extends State<AddLecturerScreen> {
 
     setState(() => _isLoading = true);
 
-    // build the model — uid is empty, AuthService fills it in from Firebase
     final lecturer = LecturerModel(
       uid: '',
       name: name,
@@ -95,7 +94,6 @@ class _AddLecturerScreenState extends State<AddLecturerScreen> {
       modules: _selectedModules,
     );
 
-    // hand off to AuthService — no Firebase code in this file
     String? errorMessage = await _authService.registerLecturer(lecturer);
 
     if (mounted) setState(() => _isLoading = false);
