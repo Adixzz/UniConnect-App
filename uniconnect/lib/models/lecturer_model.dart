@@ -21,6 +21,7 @@ class LecturerModel {
     this.role = 'lecturer',
   });
 
+  // Converts the LecturerModel object into a Map (for uploading to Firestore)
   Map<String, dynamic> toMap() {
     return {
       'uid': uid,
@@ -34,5 +35,21 @@ class LecturerModel {
       'role': role,
       'createdAt': DateTime.now().toIso8601String(),
     };
+  }
+
+  // Factory constructor: Creates a LecturerModel object from a Map (downloaded from Firestore)
+  factory LecturerModel.fromMap(Map<String, dynamic> map) {
+    return LecturerModel(
+      uid: map['uid'] ?? '',
+      name: map['name'] ?? '',
+      email: map['email'] ?? '',
+      staffId: map['staffId'] ?? '',
+      pin: map['pin'] ?? '',
+      faculty: map['faculty'] ?? '',
+      // Safely handle the list conversion
+      modules: List<String>.from(map['modules'] ?? []),
+      availability: map['availability'] ?? 'Not in Lecture',
+      role: map['role'] ?? 'lecturer',
+    );
   }
 }
