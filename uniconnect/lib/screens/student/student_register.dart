@@ -37,7 +37,11 @@ class _StudentRegisterScreenState extends State<StudentRegisterScreen> {
     final confirmPassword = _confirmPasswordController.text.trim();
     final studentId = _studentIdController.text.trim();
 
-    if (name.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty || studentId.isEmpty) {
+    if (name.isEmpty ||
+        email.isEmpty ||
+        password.isEmpty ||
+        confirmPassword.isEmpty ||
+        studentId.isEmpty) {
       _showSnackBar("Please fill in all fields");
       return;
     }
@@ -66,32 +70,68 @@ class _StudentRegisterScreenState extends State<StudentRegisterScreen> {
     }
   }
 
-  void _showSnackBar(String msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  void _showSnackBar(String msg) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Student Registration")),
-      body: _isLoading 
+      body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 children: [
-                  TextField(controller: _nameController, decoration: const InputDecoration(labelText: "Full Name", border: OutlineInputBorder())),
+                  TextField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: "Full Name",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
                   const SizedBox(height: 16),
-                  TextField(controller: _studentIdController, decoration: const InputDecoration(labelText: "Student ID", border: OutlineInputBorder())),
+                  TextField(
+                    controller: _studentIdController,
+                    decoration: const InputDecoration(
+                      labelText: "Student ID",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
                   const SizedBox(height: 16),
-                  TextField(controller: _emailController, decoration: const InputDecoration(labelText: "University Email", border: OutlineInputBorder())),
+                  TextField(
+                    controller: _emailController,
+                    decoration: const InputDecoration(
+                      labelText: "University Email",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
                   const SizedBox(height: 16),
-                  TextField(controller: _passwordController, obscureText: true, decoration: const InputDecoration(labelText: "Password", border: OutlineInputBorder())),
+                  TextField(
+                    controller: _passwordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: "Password",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
                   const SizedBox(height: 30),
-                  TextField(controller: _confirmPasswordController, obscureText: true, decoration: const InputDecoration(labelText: "Confirm Password", border: OutlineInputBorder())),
+                  TextField(
+                    controller: _confirmPasswordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: "Confirm Password",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
                   const SizedBox(height: 30),
                   SizedBox(
-                    width: double.infinity, 
+                    width: double.infinity,
                     height: 50,
-                    child: ElevatedButton(onPressed: _registerStudent, child: const Text("CREATE ACCOUNT")),
+                    child: ElevatedButton(
+                      onPressed: _registerStudent,
+                      child: const Text("CREATE ACCOUNT"),
+                    ),
                   ),
                 ],
               ),

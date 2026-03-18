@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:uniconnect/screens/lecturer/lecturer_main_nav.dart';
-// TODO: Make sure this import matches the location of your AuthService file
+// TODO: Make sure these imports match your actual folder structure!
 import 'package:uniconnect/services/auth_service.dart';
+import 'package:uniconnect/models/lecturer_model.dart';
 
 class LecturerLoginScreen extends StatefulWidget {
   const LecturerLoginScreen({super.key});
@@ -43,11 +44,8 @@ class _LecturerLoginScreenState extends State<LecturerLoginScreen> {
       _isLoading = true;
     });
 
-    // 3. Call the AuthService
-    String? errorMessage = await _authService.loginLecturer(
-      staffId: staffId,
-      pin: pin,
-    );
+    // 3. Call the AuthService (It now returns a dynamic result: LecturerModel OR String)
+    var result = await _authService.loginLecturer(staffId: staffId, pin: pin);
 
     // 4. Hide loading state (check if widget is still mounted before calling setState)
     if (!mounted) return;
@@ -56,22 +54,24 @@ class _LecturerLoginScreenState extends State<LecturerLoginScreen> {
     });
 
     // 5. Handle the result
-    if (errorMessage == null) {
+    if (result is LecturerModel) {
       // Login successful!
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Login Successful!')));
 
-      // Navigate to the dashboard and remove the login screen from the backstack
+      // Navigate to the dashboard AND pass the lecturer data!
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const LecturerMainNavigation()),
+        MaterialPageRoute(
+          builder: (context) => LecturerMainNavigation(currentLecturer: result),
+        ),
       );
     } else {
-      // Login failed, show the error message
+      // Login failed, show the error message returned from the service
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(errorMessage)));
+      ).showSnackBar(SnackBar(content: Text(result.toString())));
     }
   }
 

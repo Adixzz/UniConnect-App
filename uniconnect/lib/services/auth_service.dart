@@ -124,12 +124,11 @@ class AuthService {
   }
 
   // 5. Lecturer Login (Using Staff ID + PIN)
-  Future<String?> loginLecturer({
+  Future<dynamic> loginLecturer({
     required String staffId,
     required String pin,
   }) async {
     try {
-      // Query Firestore directly for an exact match of BOTH Staff ID and PIN
       QuerySnapshot snapshot = await _firestore
           .collection('lecturers')
           .where('staffId', isEqualTo: staffId)
@@ -137,21 +136,14 @@ class AuthService {
           .limit(1)
           .get();
 
-      // If no document is found, the credentials don't match
       if (snapshot.docs.isEmpty) {
-        return "Invalid Staff ID or Access Pin.";
+        return "Invalid Staff ID or Access Pin."; // Return error string
       }
 
-      // Success! A matching lecturer was found in the database.
-      // We extract the data using the fromMap we created earlier.
+      // Success! Return the actual lecturer data
       Map<String, dynamic> lecturerData =
           snapshot.docs.first.data() as Map<String, dynamic>;
-      LecturerModel currentLecturer = LecturerModel.fromMap(lecturerData);
-
-      // Note: Because we aren't using Firebase Auth here, the app won't "remember"
-      // the user automatically on restart.
-
-      return null; // Returning null means there were no errors (Login Success!)
+      return LecturerModel.fromMap(lecturerData);
     } catch (e) {
       return "An unexpected error occurred: $e";
     }
