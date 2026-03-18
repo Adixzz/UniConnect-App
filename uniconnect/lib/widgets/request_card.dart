@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class RequestActionCard extends StatelessWidget {
   final String name;
   final String reason;
-  // 1. Add the callback functions
+  final String time; // 1. Added the time property
   final VoidCallback? onApprove;
   final VoidCallback? onDecline;
 
@@ -11,7 +11,8 @@ class RequestActionCard extends StatelessWidget {
     super.key,
     required this.name,
     required this.reason,
-    this.onApprove, // 2. Add them to the constructor
+    required this.time, // 2. Required it in the constructor
+    this.onApprove,
     this.onDecline,
   });
 
@@ -22,7 +23,6 @@ class RequestActionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        // Added a subtle shadow so the white card pops off the grey background
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
@@ -44,9 +44,37 @@ class RequestActionCard extends StatelessWidget {
               name,
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            subtitle: Text(reason),
+            // 3. Updated subtitle to show BOTH the reason and the new time format
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 4.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(reason),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.calendar_today,
+                        size: 14,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        time,
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -58,7 +86,7 @@ class RequestActionCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                     ),
                   ),
-                  onPressed: onApprove, // 3. Hook up Approve
+                  onPressed: onApprove,
                   child: const Text(
                     "Approve",
                     style: TextStyle(color: Colors.white),
@@ -74,7 +102,7 @@ class RequestActionCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                     ),
                   ),
-                  onPressed: onDecline, // 4. Hook up Decline
+                  onPressed: onDecline,
                   child: const Text(
                     "Decline",
                     style: TextStyle(color: Colors.red),

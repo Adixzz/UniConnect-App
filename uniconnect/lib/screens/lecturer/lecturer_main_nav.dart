@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'lecturer_home.dart';
 import 'availability_screen.dart';
+// Make sure this path points to where your RequestsScreen is located!
+import 'lecturer_request.dart';
 // Make sure this path matches where your model is saved!
 import '../../models/lecturer_model.dart';
 
@@ -23,11 +25,13 @@ class _LecturerMainNavigationState extends State<LecturerMainNavigation> {
   @override
   void initState() {
     super.initState();
-    // 3. Initialize the screens here and pass the data to the Home Screen!
+    // 3. Initialize the screens here and pass the data to both Home and Requests!
     _screens = [
       LecturerHomeScreen(currentLecturer: widget.currentLecturer), // Index 0
       const AvailabilityScreen(), // Index 1
-      const Center(child: Text("Requests Screen")), // Index 2 (Placeholder)
+      RequestsScreen(
+        currentLecturer: widget.currentLecturer,
+      ), // Index 2 (Updated to live screen!)
       const Center(child: Text("Settings Screen")), // Index 3 (Placeholder)
     ];
   }

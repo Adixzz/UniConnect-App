@@ -4,6 +4,8 @@ import '../../widgets/summary_card.dart';
 import '../../widgets/request_card.dart';
 import '../../widgets/ScheduleTile.dart';
 import '../../models/lecturer_model.dart'; // Adjust import if needed
+// Make sure this import points to where your RequestsScreen is located!
+import 'lecturer_request.dart';
 
 class LecturerHomeScreen extends StatefulWidget {
   final LecturerModel currentLecturer;
@@ -48,6 +50,31 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
     return "${now.day}/${now.month}/${now.year}";
   }
 
+  // --- Helper method to parse time strings into sortable numbers (Minutes from midnight) ---
+  int _timeToMinutes(String timeStr) {
+    try {
+      timeStr = timeStr.trim().toUpperCase();
+      if (timeStr.isEmpty) return 9999; // Put empty times at the end
+
+      bool isPM = timeStr.contains('PM');
+      // Remove everything except numbers and the colon
+      String timePart = timeStr.replaceAll(RegExp(r'[^0-9:]'), '');
+      List<String> parts = timePart.split(':');
+
+      if (parts.length != 2) return 9999;
+
+      int hours = int.parse(parts[0]);
+      int minutes = int.parse(parts[1]);
+
+      if (isPM && hours != 12) hours += 12; // Convert PM to 24-hour time
+      if (!isPM && hours == 12) hours = 0; // Handle 12:00 AM as midnight
+
+      return hours * 60 + minutes; // Return total minutes since midnight
+    } catch (e) {
+      return 9999; // If format is weird, push to the bottom of the list
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     String todayString = _getTodayDateString();
@@ -73,7 +100,6 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
             }
 
             // STEP 3: Organize the data!
-            // We separate the meetings into "Pending" and "Today's Accepted Schedule"
             List<QueryDocumentSnapshot> allMeetings = snapshot.data?.docs ?? [];
 
             List<QueryDocumentSnapshot> pendingRequests = allMeetings.where((
@@ -88,6 +114,19 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
               // Assuming you want to show "Accepted" or "Scheduled" meetings for today
               return doc['date'] == todayString && doc['status'] == 'Accepted';
             }).toList();
+
+            // --- Sort Today's Schedule chronologically ---
+            todaysSchedule.sort((a, b) {
+              Map<String, dynamic> dataA = a.data() as Map<String, dynamic>;
+              Map<String, dynamic> dataB = b.data() as Map<String, dynamic>;
+
+              int timeA = _timeToMinutes(dataA['time'] ?? '');
+              int timeB = _timeToMinutes(dataB['time'] ?? '');
+
+              return timeA.compareTo(
+                timeB,
+              ); // Sorts smallest to largest (morning to night)
+            });
 
             return SingleChildScrollView(
               padding: const EdgeInsets.all(20),
@@ -170,6 +209,17 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
                           name: studentName,
                           time: data['time'] ?? 'No time set',
                           type: data['moduleName'] ?? 'General',
+                          // --- NAVIGATE TO REQUESTS SCREEN ---
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => RequestsScreen(
+                                  currentLecturer: widget.currentLecturer,
+                                ),
+                              ),
+                            );
+                          },
                         );
                       },
                     );
@@ -212,7 +262,11 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
                             name: studentName,
                             reason: data['reason'] ?? 'No reason provided',
 
-                            // --- NEW LOGIC FOR BUTTONS ---
+                            // --- PASSING THE TIME TO THE CARD ---
+                            time:
+                                "${data['date'] ?? 'No Date'} at ${data['time'] ?? 'No Time'}",
+
+                            // --- LOGIC FOR BUTTONS ---
                             onApprove: () async {
                               try {
                                 await FirebaseFirestore.instance
@@ -254,8 +308,6 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
                                 print("Error declining: $e");
                               }
                             },
-
-                            // -----------------------------
                           ),
                         );
                       },
