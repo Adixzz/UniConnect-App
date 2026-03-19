@@ -15,8 +15,7 @@ class _AddLecturerScreenState extends State<AddLecturerScreen> {
   final _emailController = TextEditingController();
   final _staffIdController = TextEditingController();
   final _pinController = TextEditingController();
-
-  // services — UI talks to these, not to Firebase directly
+  final _locationController = TextEditingController();
   final AuthService _authService = AuthService();
   final DatabaseService _dbService = DatabaseService();
 
@@ -34,7 +33,6 @@ class _AddLecturerScreenState extends State<AddLecturerScreen> {
     _fetchDropdownData();
   }
 
-  // fetches faculties and modules through DatabaseService, not Firebase directly
   Future<void> _fetchDropdownData() async {
     final faculties = await _dbService.getFaculties();
     final modules = await _dbService.getModules();
@@ -66,8 +64,11 @@ class _AddLecturerScreenState extends State<AddLecturerScreen> {
     final email = _emailController.text.trim();
     final staffId = _staffIdController.text.trim();
     final pin = _pinController.text.trim();
+    final location = _locationController.text.trim(); // ADDED
 
-    if (name.isEmpty || email.isEmpty || staffId.isEmpty || pin.isEmpty) {
+    // UPDATED — added location to empty check
+    if (name.isEmpty || email.isEmpty || staffId.isEmpty || 
+        pin.isEmpty || location.isEmpty) {
       _showSnackBar("Please fill in all fields");
       return;
     }
@@ -84,6 +85,7 @@ class _AddLecturerScreenState extends State<AddLecturerScreen> {
 
     setState(() => _isLoading = true);
 
+    // UPDATED — added location to model
     final lecturer = LecturerModel(
       uid: '',
       name: name,
@@ -92,6 +94,7 @@ class _AddLecturerScreenState extends State<AddLecturerScreen> {
       pin: pin,
       faculty: _selectedFaculty!,
       modules: _selectedModules,
+      location: location,
     );
 
     String? errorMessage = await _authService.registerLecturer(lecturer);
@@ -115,6 +118,7 @@ class _AddLecturerScreenState extends State<AddLecturerScreen> {
     _emailController.dispose();
     _staffIdController.dispose();
     _pinController.dispose();
+    _locationController.dispose(); // ADDED
     super.dispose();
   }
 
@@ -143,6 +147,13 @@ class _AddLecturerScreenState extends State<AddLecturerScreen> {
                   const SizedBox(height: 16),
                   _buildTextField(_pinController, "Access Pin", Icons.lock,
                       obscure: true),
+                  const SizedBox(height: 16),
+                  // ADDED — location field
+                  _buildTextField(
+                    _locationController,
+                    "Location (e.g. Block A, Room 201)",
+                    Icons.location_on,
+                  ),
                   const SizedBox(height: 16),
 
                   _buildDropdown(

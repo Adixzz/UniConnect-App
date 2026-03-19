@@ -108,6 +108,7 @@ class AuthService {
         pin: lecturer.pin,
         faculty: lecturer.faculty,
         modules: lecturer.modules,
+        location: lecturer.location,
       ));
 
       return null;

@@ -95,4 +95,26 @@ class DatabaseService {
       return [];
     }
   }
+
+  // 9. Search student by their student ID
+Future<Map<String, dynamic>?> getStudentById(String studentId) async {
+  try {
+    final snapshot = await _db
+        .collection('users')
+        .where('studentId', isEqualTo: studentId)
+        .where('role', isEqualTo: 'student')
+        .get();
+    if (snapshot.docs.isNotEmpty) {
+      return {
+        'uid': snapshot.docs.first.id,
+        'name': snapshot.docs.first.data()['name'],
+        'studentId': snapshot.docs.first.data()['studentId'],
+      };
+    }
+    return null;
+  } catch (e) {
+    print("Error searching student: $e");
+    return null;
+  }
+}
 }

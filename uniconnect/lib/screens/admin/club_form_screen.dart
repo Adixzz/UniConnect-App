@@ -15,20 +15,17 @@ class ClubFormScreen extends StatefulWidget {
 class _ClubFormScreenState extends State<ClubFormScreen> {
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _presidentController = TextEditingController();
+  final _studentIdSearchController = TextEditingController(); // for searching
   final DatabaseService _dbService = DatabaseService();
 
   String? _selectedCategory;
+  String? _presidentUid;    // set after search, not typed manually
+  String? _presidentName;   // set after search, not typed manually
   bool _isLoading = false;
+  bool _isSearching = false;
 
   final List<String> _categories = [
-    'Academic',
-    'Sports',
-    'Arts',
-    'Religious',
-    'Social',
-    'Technology',
-    'Other',
+    'Academic', 'Sports', 'Arts', 'Religious', 'Social', 'Technology', 'Other',
   ];
 
   bool get _isEditing => widget.existingClub != null;
@@ -39,8 +36,10 @@ class _ClubFormScreenState extends State<ClubFormScreen> {
     if (_isEditing) {
       _nameController.text = widget.existingClub!.name;
       _descriptionController.text = widget.existingClub!.description;
-      _presidentController.text = widget.existingClub!.president;
       _selectedCategory = widget.existingClub!.category;
+      // pre-fill president info from existing club
+      _presidentUid = widget.existingClub!.presidentID;
+      _presidentName = widget.existingClub!.president;
     }
   }
 
@@ -48,22 +47,50 @@ class _ClubFormScreenState extends State<ClubFormScreen> {
   void dispose() {
     _nameController.dispose();
     _descriptionController.dispose();
-    _presidentController.dispose();
+    _studentIdSearchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _searchStudent() async {
+    final studentId = _studentIdSearchController.text.trim();
+    if (studentId.isEmpty) {
+      _showSnackBar("Please enter a student ID");
+      return;
+    }
+
+    setState(() => _isSearching = true);
+    final student = await _dbService.getStudentById(studentId);
+    setState(() => _isSearching = false);
+
+    if (student == null) {
+      _showSnackBar("No student found with ID: $studentId");
+      return;
+    }
+
+    // store the found student's uid and name
+    setState(() {
+      _presidentUid = student['uid'];
+      _presidentName = student['name'];
+    });
+    _showSnackBar("Found: ${student['name']}");
   }
 
   Future<void> _saveClub() async {
     final name = _nameController.text.trim();
     final description = _descriptionController.text.trim();
-    final president = _presidentController.text.trim();
 
-    if (name.isEmpty || description.isEmpty || president.isEmpty) {
+    if (name.isEmpty || description.isEmpty) {
       _showSnackBar("Please fill in all fields");
       return;
     }
 
     if (_selectedCategory == null) {
       _showSnackBar("Please select a category");
+      return;
+    }
+
+    if (_presidentUid == null) {
+      _showSnackBar("Please search and select a president");
       return;
     }
 
@@ -76,17 +103,24 @@ class _ClubFormScreenState extends State<ClubFormScreen> {
           name: name,
           description: description,
           category: _selectedCategory!,
-          president: president,
+          president: _presidentName!,
+          presidentID: _presidentUid!,
+          members: widget.existingClub!.members,
+          pendingRequests: widget.existingClub!.pendingRequests,
         ));
         _showSnackBar("Club updated successfully!");
       } else {
-        final newId = FirebaseFirestore.instance.collection('clubs').doc().id;
+        final newId =
+            FirebaseFirestore.instance.collection('clubs').doc().id;
         await _dbService.saveClub(ClubModel(
           clubId: newId,
           name: name,
           description: description,
           category: _selectedCategory!,
-          president: president,
+          president: _presidentName!,
+          presidentID: _presidentUid!,
+          members: [],
+          pendingRequests: [],
         ));
         _showSnackBar("Club added successfully!");
       }
@@ -117,6 +151,7 @@ class _ClubFormScreenState extends State<ClubFormScreen> {
           : SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildTextField(_nameController, "Club Name", Icons.group),
                   const SizedBox(height: 16),
@@ -127,10 +162,6 @@ class _ClubFormScreenState extends State<ClubFormScreen> {
                     maxLines: 3,
                   ),
                   const SizedBox(height: 16),
-                  _buildTextField(
-                      _presidentController, "President / Contact", Icons.person),
-                  const SizedBox(height: 16),
-
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -154,14 +185,67 @@ class _ClubFormScreenState extends State<ClubFormScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 16),
+                  const Text(
+                    "Club President",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _studentIdSearchController,
+                          decoration: const InputDecoration(
+                            labelText: "Search by Student ID",
+                            prefixIcon: Icon(Icons.search),
+                            border: OutlineInputBorder(),
+                            filled: true,
+                            fillColor: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      _isSearching
+                          ? const CircularProgressIndicator()
+                          : ElevatedButton(
+                              onPressed: _searchStudent,
+                              child: const Text("Search"),
+                            ),
+                    ],
+                  ),
 
+                  if (_presidentUid != null) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.green),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.check_circle, color: Colors.green),
+                          const SizedBox(width: 8),
+                          Text(
+                            "President: $_presidentName",
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 30),
                   SizedBox(
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
                       onPressed: _saveClub,
-                      // button label changes depending on adding or editing
                       child: Text(_isEditing ? "SAVE CHANGES" : "ADD CLUB"),
                     ),
                   ),
