@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:uniconnect/screens/student/student_home.dart';
 import 'package:uniconnect/screens/student/student_main_nav.dart';
 import '../../models/lecturer_model.dart';
 import '../../services/database_service.dart';
@@ -7,7 +6,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 class MeetingDetailsScreen extends StatefulWidget {
   final LecturerModel lecturer;
-  const MeetingDetailsScreen({super.key, required this.lecturer});
+  final String? selectedModuleName; // Added parameter
+
+  const MeetingDetailsScreen({
+    super.key, 
+    required this.lecturer, 
+    this.selectedModuleName // Optional for Direct Search
+  });
 
   @override
   State<MeetingDetailsScreen> createState() => _MeetingDetailsScreenState();
@@ -66,14 +71,10 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. UPDATED SUMMARY CARD (Now shows Location)
             _buildLecturerSummary(),
             const SizedBox(height: 32),
 
-            const Text(
-              "Select Date & Time",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
+            const Text("Select Date & Time", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -100,10 +101,7 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
             ),
             const SizedBox(height: 32),
 
-            const Text(
-              "Reason for Meeting",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
+            const Text("Reason for Meeting", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             TextField(
               controller: _reasonController,
@@ -112,10 +110,7 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
                 hintText: "Explain briefly why you want to meet...",
                 filled: true,
                 fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide(color: Colors.grey.shade200),
@@ -132,47 +127,38 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
                   final currentUser = FirebaseAuth.instance.currentUser;
 
                   if (currentUser == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Error: You must be logged in.")),
-                    );
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error: You must be logged in.")));
                     return;
                   }
 
                   if (selectedDate == null || selectedTime == null || _reasonController.text.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Please fill all fields")),
-                    );
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please fill all fields")));
                     return;
                   }
 
                   try {
-                    // 2. DYNAMIC LOCATION SAVED HERE
                     await DatabaseService().saveMeetingRequest(
                       studentUid: currentUser.uid,
                       lecturerUid: widget.lecturer.uid,
                       lecturerName: widget.lecturer.name,
-                      moduleName: widget.lecturer.modules.first,
+                      // Relay Logic: Use passed name or fallback
+                      moduleName: widget.selectedModuleName ?? "No specific module selected",
                       date: "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
                       time: selectedTime!.format(context),
                       reason: _reasonController.text,
-                      location: widget.lecturer.location, // Dynamic Location from Model
+                      location: widget.lecturer.location,
                     );
 
                     _showSuccessDialog();
                   } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Failed to send request: $e")),
-                    );
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to send request: $e")));
                   }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryGreen,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
-                child: const Text(
-                  "Submit Request",
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                ),
+                child: const Text("Submit Request", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
               ),
             ),
           ],
@@ -194,35 +180,22 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
           CircleAvatar(
             radius: 30,
             backgroundColor: primaryGreen.withOpacity(0.1),
-            child: Text(
-              widget.lecturer.name[0],
-              style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold, fontSize: 24),
-            ),
+            child: Text(widget.lecturer.name[0], style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold, fontSize: 24)),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  widget.lecturer.name,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+                Text(widget.lecturer.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text(
-                  widget.lecturer.faculty,
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
-                ),
+                Text(widget.lecturer.faculty, style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
                 const SizedBox(height: 4),
-                // NEW: VISUAL OFFICE LOCATION
                 Row(
                   children: [
                     const Icon(Icons.location_on, size: 14, color: Colors.grey),
                     const SizedBox(width: 4),
-                    Text(
-                      widget.lecturer.location,
-                      style: const TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500),
-                    ),
+                    Text(widget.lecturer.location, style: const TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500)),
                   ],
                 ),
               ],
@@ -238,11 +211,7 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
         child: Row(
           children: [
             Icon(icon, size: 20, color: primaryGreen),
@@ -261,18 +230,11 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Icon(Icons.check_circle, color: Colors.green, size: 60),
-        content: const Text(
-          "Meeting request sent successfully! You will be notified once the lecturer approves it.",
-          textAlign: TextAlign.center,
-        ),
+        content: const Text("Meeting request sent successfully!", textAlign: TextAlign.center),
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => const StudentMainNavigation()),
-                (route) => false,
-              );
+              Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const StudentMainNavigation()), (route) => false);
             },
             child: const Text("OK"),
           ),

@@ -14,9 +14,8 @@ class _GlobalLecturerSearchState extends State<GlobalLecturerSearch> {
   final Color primaryGreen = const Color(0xFF10B981);
   final TextEditingController _searchController = TextEditingController();
   
-  // State variables
-  List<LecturerModel> _allLecturers = []; // Stores the full list from Firebase
-  List<LecturerModel> _filteredLecturers = []; // Stores what is currently shown
+  List<LecturerModel> _allLecturers = [];
+  List<LecturerModel> _filteredLecturers = [];
   bool _isLoading = true;
 
   @override
@@ -25,7 +24,6 @@ class _GlobalLecturerSearchState extends State<GlobalLecturerSearch> {
     _fetchLecturers();
   }
 
-  // Fetch real data from your DatabaseService
   Future<void> _fetchLecturers() async {
     try {
       final data = await DatabaseService().getAllLecturers();
@@ -42,20 +40,11 @@ class _GlobalLecturerSearchState extends State<GlobalLecturerSearch> {
     }
   }
 
-  // Local filtering logic (Instant search)
   void _runFilter(String enteredKeyword) {
-    List<LecturerModel> results = [];
-    if (enteredKeyword.isEmpty) {
-      results = _allLecturers;
-    } else {
-      results = _allLecturers
-          .where((lecturer) =>
-              lecturer.name.toLowerCase().contains(enteredKeyword.toLowerCase()))
-          .toList();
-    }
-
     setState(() {
-      _filteredLecturers = results;
+      _filteredLecturers = enteredKeyword.isEmpty 
+          ? _allLecturers 
+          : _allLecturers.where((l) => l.name.toLowerCase().contains(enteredKeyword.toLowerCase())).toList();
     });
   }
 
@@ -77,7 +66,6 @@ class _GlobalLecturerSearchState extends State<GlobalLecturerSearch> {
         padding: const EdgeInsets.symmetric(horizontal: 24.0),
         child: Column(
           children: [
-            // Professional Search Bar
             TextField(
               controller: _searchController,
               onChanged: (value) => _runFilter(value),
@@ -85,38 +73,23 @@ class _GlobalLecturerSearchState extends State<GlobalLecturerSearch> {
                 hintText: 'Search by name...',
                 prefixIcon: Icon(Icons.search, color: primaryGreen),
                 suffixIcon: _searchController.text.isNotEmpty 
-                  ? IconButton(
-                      icon: const Icon(Icons.clear), 
-                      onPressed: () {
-                        _searchController.clear();
-                        _runFilter('');
-                      }) 
+                  ? IconButton(icon: const Icon(Icons.clear), onPressed: () { _searchController.clear(); _runFilter(''); }) 
                   : null,
                 filled: true,
                 fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: Colors.grey.shade200),
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
               ),
             ),
             const SizedBox(height: 24),
 
-            // Loading or Results
             Expanded(
               child: _isLoading 
                 ? const Center(child: CircularProgressIndicator(color: Color(0xFF10B981)))
                 : _filteredLecturers.isNotEmpty
                     ? ListView.builder(
                         itemCount: _filteredLecturers.length,
-                        itemBuilder: (context, index) {
-                          final lecturer = _filteredLecturers[index];
-                          return _buildLecturerCard(lecturer);
-                        },
+                        itemBuilder: (context, index) => _buildLecturerCard(_filteredLecturers[index]),
                       )
                     : _buildNoResults(),
             ),
@@ -127,33 +100,53 @@ class _GlobalLecturerSearchState extends State<GlobalLecturerSearch> {
   }
 
   Widget _buildLecturerCard(LecturerModel lecturer) {
+    bool isAvailable = lecturer.availability == "Available";
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
         leading: CircleAvatar(
           radius: 28,
           backgroundColor: primaryGreen.withOpacity(0.1),
-          child: Text(
-            lecturer.name[0].toUpperCase(),
-            style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold, fontSize: 20),
-          ),
+          child: Text(lecturer.name[0].toUpperCase(), style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold, fontSize: 20)),
         ),
-        title: Text(lecturer.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        title: Row(
+          children: [
+            Expanded(child: Text(lecturer.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+            // --- NEW AVAILABILITY BADGE ---
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: isAvailable ? Colors.green.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                isAvailable ? "Available" : "Busy",
+                style: TextStyle(
+                  color: isAvailable ? Colors.green : Colors.grey.shade600,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
         subtitle: Text(lecturer.faculty, style: TextStyle(color: Colors.grey.shade600)),
         trailing: const Icon(Icons.chevron_right, color: Colors.grey),
         onTap: () {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => MeetingDetailsScreen(lecturer: lecturer),
+              builder: (context) => MeetingDetailsScreen(
+                lecturer: lecturer,
+                selectedModuleName: "No specific module selected",
+              ),
             ),
           );
         },
