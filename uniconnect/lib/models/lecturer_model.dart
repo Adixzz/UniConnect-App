@@ -8,6 +8,7 @@ class LecturerModel {
   final List<String> modules;
   final String availability;
   final String role;
+  final String location;
 
   LecturerModel({
     required this.uid,
@@ -19,6 +20,7 @@ class LecturerModel {
     required this.modules,
     this.availability = 'Not in Lecture',
     this.role = 'lecturer',
+  
   });
 
   Map<String, dynamic> toMap() {

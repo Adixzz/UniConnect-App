@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../services/database_service.dart';
+import '../auth/welcome_screen.dart'; // Adjust this path to your WelcomeScreen
 import '../../widgets/profile_activity_item.dart';
 import '../../widgets/profile_notification_item.dart';
 import '../../widgets/profile_setting_item.dart';
@@ -11,10 +15,24 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  int selectedIndex = 4;
+  // Backend variables
+  final String currentUid = FirebaseAuth.instance.currentUser?.uid ?? "";
+  final DatabaseService _dbService = DatabaseService();
 
   bool meetingReminders = true;
   bool clubAnnouncements = true;
+
+  // Logout Logic
+  Future<void> _handleLogout() async {
+    await FirebaseAuth.instance.signOut();
+    if (!mounted) return;
+    
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+      (route) => false,
+    );
+  }
 
   BoxDecoration cardDecoration() {
     return BoxDecoration(
@@ -50,52 +68,68 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 18),
 
-              // USER CARD
-              Container(
-                decoration: cardDecoration(),
-                padding: const EdgeInsets.all(20),
-                child: const Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 34,
-                      backgroundColor: Color(0xFFE61E6E),
-                      child: Text(
-                        'DU',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Demo User',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black,
+              // --- DYNAMIC USER CARD ---
+              FutureBuilder<DocumentSnapshot>(
+                future: _dbService.getUserData(currentUid),
+                builder: (context, snapshot) {
+                  String name = "Loading...";
+                  String email = "...";
+                  String initials = "??";
+
+                  if (snapshot.hasData && snapshot.data!.exists) {
+                    final data = snapshot.data!.data() as Map<String, dynamic>;
+                    name = data['name'] ?? "User";
+                    email = data['email'] ?? "No Email";
+                    initials = name.isNotEmpty ? name[0].toUpperCase() : "U";
+                  }
+
+                  return Container(
+                    decoration: cardDecoration(),
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 34,
+                          backgroundColor: const Color(0xFFE61E6E),
+                          child: Text(
+                            initials,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
-                          SizedBox(height: 6),
-                          Text(
-                            'demo@university.edu',
-                            style: TextStyle(fontSize: 14, color: Colors.grey),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                name,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                email,
+                                style: const TextStyle(fontSize: 14, color: Colors.grey),
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                'Student Account',
+                                style: TextStyle(fontSize: 14, color: Colors.grey),
+                              ),
+                            ],
                           ),
-                          SizedBox(height: 6),
-                          Text(
-                            'Student Account',
-                            style: TextStyle(fontSize: 14, color: Colors.grey),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
 
               const SizedBox(height: 22),
@@ -111,25 +145,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 10),
 
-              // ACTIVITY CARD
+              // --- DYNAMIC ACTIVITY CARD ---
               Container(
                 decoration: cardDecoration(),
-                child: const Column(
+                child: Column(
                   children: [
-                    ProfileActivityItem(
-                      icon: Icons.calendar_today_outlined,
-                      iconColor: Colors.blue,
-                      iconBgColor: Color(0xFFEAF2FF),
-                      title: 'Total Meetings',
-                      value: '12',
+                    // Meetings Count
+                    StreamBuilder<QuerySnapshot>(
+                      stream: _dbService.getStudentMeetings(currentUid),
+                      builder: (context, snapshot) {
+                        int count = snapshot.hasData ? snapshot.data!.docs.length : 0;
+                        return ProfileActivityItem(
+                          icon: Icons.calendar_today_outlined,
+                          iconColor: Colors.blue,
+                          iconBgColor: const Color(0xFFEAF2FF),
+                          title: 'Total Meetings',
+                          value: count.toString(),
+                        );
+                      },
                     ),
-                    Divider(height: 1),
-                    ProfileActivityItem(
-                      icon: Icons.groups_2_outlined,
-                      iconColor: Colors.purple,
-                      iconBgColor: Color(0xFFF3E8FF),
-                      title: 'Clubs Joined',
-                      value: '5',
+                    const Divider(height: 1),
+                    // Clubs Count
+                    FutureBuilder<List>(
+                      future: _dbService.getClubs(),
+                      builder: (context, snapshot) {
+                        int count = snapshot.hasData ? snapshot.data!.length : 0;
+                        return ProfileActivityItem(
+                          icon: Icons.groups_2_outlined,
+                          iconColor: Colors.purple,
+                          iconBgColor: const Color(0xFFF3E8FF),
+                          title: 'Clubs Joined',
+                          value: count.toString(),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -148,7 +196,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 10),
 
-              // NOTIFICATION SETTINGS
               Container(
                 decoration: cardDecoration(),
                 child: Column(
@@ -158,9 +205,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       subtitle: 'Get notified about upcoming meetings',
                       value: meetingReminders,
                       onChanged: (value) {
-                        setState(() {
-                          meetingReminders = value;
-                        });
+                        setState(() => meetingReminders = value);
                       },
                     ),
                     const Divider(height: 1),
@@ -169,9 +214,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       subtitle: 'Receive updates from your clubs',
                       value: clubAnnouncements,
                       onChanged: (value) {
-                        setState(() {
-                          clubAnnouncements = value;
-                        });
+                        setState(() => clubAnnouncements = value);
                       },
                     ),
                   ],
@@ -191,22 +234,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 10),
 
-              // SETTINGS CARD
               Container(
                 decoration: cardDecoration(),
-                child: const Column(
+                child: Column(
                   children: [
-                    ProfileSettingItem(
+                    const ProfileSettingItem(
                       icon: Icons.settings_outlined,
                       title: 'Account Settings',
                     ),
-                    Divider(height: 1),
-                    ProfileSettingItem(
-                      icon: Icons.logout,
-                      title: 'Logout',
-                      titleColor: Colors.red,
-                      iconColor: Colors.red,
-                      showArrow: false,
+                    const Divider(height: 1),
+                    // Functional Logout Item
+                    GestureDetector(
+                      onTap: _handleLogout,
+                      child: const ProfileSettingItem(
+                        icon: Icons.logout,
+                        title: 'Logout',
+                        titleColor: Colors.red,
+                        iconColor: Colors.red,
+                        showArrow: false,
+                      ),
                     ),
                   ],
                 ),

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:uniconnect/screens/student/student_home.dart';
+import 'package:uniconnect/screens/student/student_main_nav.dart';
 import '../../models/lecturer_model.dart';
+import '../../services/database_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class MeetingDetailsScreen extends StatefulWidget {
   final LecturerModel lecturer;
@@ -23,9 +27,9 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
       lastDate: DateTime.now().add(const Duration(days: 30)),
       builder: (context, child) {
         return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(primary: primaryGreen),
-          ),
+          data: Theme.of(
+            context,
+          ).copyWith(colorScheme: ColorScheme.light(primary: primaryGreen)),
           child: child!,
         );
       },
@@ -46,11 +50,18 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F9),
       appBar: AppBar(
-        title: const Text('Meeting Details', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Meeting Details',
+          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.black87,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -62,27 +73,41 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
             // Lecturer Summary Card
             _buildLecturerSummary(),
             const SizedBox(height: 32),
-            
-            const Text("Select Date & Time", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+
+            const Text(
+              "Select Date & Time",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(child: _buildPickerTile(
-                  icon: Icons.calendar_today, 
-                  text: selectedDate == null ? "Pick Date" : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
-                  onTap: () => _selectDate(context),
-                )),
+                Expanded(
+                  child: _buildPickerTile(
+                    icon: Icons.calendar_today,
+                    text: selectedDate == null
+                        ? "Pick Date"
+                        : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
+                    onTap: () => _selectDate(context),
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: _buildPickerTile(
-                  icon: Icons.access_time, 
-                  text: selectedTime == null ? "Pick Time" : selectedTime!.format(context),
-                  onTap: () => _selectTime(context),
-                )),
+                Expanded(
+                  child: _buildPickerTile(
+                    icon: Icons.access_time,
+                    text: selectedTime == null
+                        ? "Pick Time"
+                        : selectedTime!.format(context),
+                    onTap: () => _selectTime(context),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 32),
-            
-            const Text("Reason for Meeting", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+
+            const Text(
+              "Reason for Meeting",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 16),
             TextField(
               controller: _reasonController,
@@ -91,7 +116,10 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
                 hintText: "Explain briefly why you want to meet...",
                 filled: true,
                 fillColor: Colors.white,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide(color: Colors.grey.shade200),
@@ -99,20 +127,74 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
               ),
             ),
             const SizedBox(height: 40),
-            
+
             SizedBox(
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: () {
-                  // TODO: Logic to save this to Database
-                  _showSuccessDialog();
+                onPressed: () async {
+                  // 1. Check if user is logged in
+                  final currentUser = FirebaseAuth.instance.currentUser;
+
+                  if (currentUser == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          "Error: You must be logged in to request a meeting.",
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+
+                  // 2. Validation
+                  if (selectedDate == null ||
+                      selectedTime == null ||
+                      _reasonController.text.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Please fill all fields")),
+                    );
+                    return;
+                  }
+
+                  try {
+                    // 3. Save to Database using your DatabaseService
+                    await DatabaseService().saveMeetingRequest(
+                      studentUid:
+                          currentUser.uid, // Get real UID from Firebase Auth
+                      lecturerUid: widget.lecturer.uid,
+                      lecturerName: widget.lecturer.name,
+                      moduleName: widget
+                          .lecturer
+                          .modules
+                          .first, // You might want to let the user pick the module too
+                      date:
+                          "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
+                      time: selectedTime!.format(context),
+                      reason: _reasonController.text,
+                    );
+
+                    _showSuccessDialog();
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Failed to send request: $e")),
+                    );
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryGreen,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
-                child: const Text("Submit Request", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                child: const Text(
+                  "Submit Request",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
               ),
             ),
           ],
@@ -127,29 +209,51 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10),
+        ],
       ),
       child: Row(
         children: [
           CircleAvatar(
             radius: 30,
             backgroundColor: primaryGreen.withOpacity(0.1),
-            child: Text(widget.lecturer.name[0], style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold, fontSize: 24)),
+            child: Text(
+              widget.lecturer.name[0],
+              style: TextStyle(
+                color: primaryGreen,
+                fontWeight: FontWeight.bold,
+                fontSize: 24,
+              ),
+            ),
           ),
           const SizedBox(width: 16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(widget.lecturer.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              Text(widget.lecturer.faculty, style: TextStyle(color: Colors.grey.shade500)),
+              Text(
+                widget.lecturer.name,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                widget.lecturer.faculty,
+                style: TextStyle(color: Colors.grey.shade500),
+              ),
             ],
-          )
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildPickerTile({required IconData icon, required String text, required VoidCallback onTap}) {
+  Widget _buildPickerTile({
+    required IconData icon,
+    required String text,
+    required VoidCallback onTap,
+  }) {
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -176,15 +280,26 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Icon(Icons.check_circle, color: Colors.green, size: 60),
-        content: const Text("Meeting request sent successfully! You will be notified once the lecturer approves it.", textAlign: TextAlign.center),
+        content: const Text(
+          "Meeting request sent successfully! You will be notified once the lecturer approves it.",
+          textAlign: TextAlign.center,
+        ),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.pop(context); // Close dialog
-              Navigator.of(context).popUntil((route) => route.isFirst); // Go back to Home
+              // Navigate specifically to your main app entry point
+              // Replace 'MainNavigation' with whatever your home/bottom nav class is called
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const StudentMainNavigation(),
+                ),
+                (route) => false,
+              );
             },
             child: const Text("OK"),
-          )
+          ),
         ],
       ),
     );

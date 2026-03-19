@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/student_model.dart';
 import '../models/lecturer_model.dart';
 import '../models/club_model.dart';
+import '../models/faculty_module_model.dart';
+
 
 class DatabaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -26,22 +28,23 @@ class DatabaseService {
     }
   }
 
-  // 3. Fetch all faculties from Firestore
-  Future<List<String>> getFaculties() async {
+  Future<List<FacultyModel>> getFaculties() async {
     try {
       final snapshot = await _db.collection('faculties').get();
-      return snapshot.docs.map((doc) => doc['name'] as String).toList();
+      return snapshot.docs.map((doc) => FacultyModel.fromMap(doc.data())).toList();
     } catch (e) {
       print("Error fetching faculties: $e");
       return [];
     }
   }
 
-  // 4. Fetch all modules from Firestore
-  Future<List<String>> getModules() async {
+  // 4. Fetch modules linked to a specific faculty
+  Future<List<ModuleModel>> getModulesByFaculty(String facultyCode) async {
     try {
-      final snapshot = await _db.collection('modules').get();
-      return snapshot.docs.map((doc) => doc['name'] as String).toList();
+      final snapshot = await _db.collection('modules')
+          .where('facultyCode', isEqualTo: facultyCode)
+          .get();
+      return snapshot.docs.map((doc) => ModuleModel.fromMap(doc.data())).toList();
     } catch (e) {
       print("Error fetching modules: $e");
       return [];
@@ -126,8 +129,8 @@ class DatabaseService {
     }
   }
 
-  // 11. Save Meeting Request
-  // I recommend creating a MeetingModel, but for now, we'll use a Map
+// 11. Save Meeting Request
+  // We've added the 'location' parameter to make it dynamic
   Future<void> saveMeetingRequest({
     required String studentUid,
     required String lecturerUid,
@@ -136,6 +139,7 @@ class DatabaseService {
     required String date,
     required String time,
     required String reason,
+    required String location, // <--- Add this new parameter
   }) async {
     try {
       await _db.collection('meetings').add({
@@ -146,6 +150,7 @@ class DatabaseService {
         'date': date,
         'time': time,
         'reason': reason,
+        'location': location, // <--- Save the dynamic location here
         'status': 'Pending',
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -154,12 +159,50 @@ class DatabaseService {
       rethrow;
     }
   }
-
-  // 12. Stream Meetings for the Student (Real-time updates for your UI)
+  // 12. Stream Meetings for the Student
   Stream<QuerySnapshot> getStudentMeetings(String studentUid) {
     return _db.collection('meetings')
         .where('studentUid', isEqualTo: studentUid)
         .orderBy('createdAt', descending: true)
         .snapshots();
   }
+
+  // 13. Cancel a meeting request (Student Side)
+  Future<void> cancelMeeting(String meetingId) async {
+    try {
+      await _db.collection('meetings').doc(meetingId).update({
+        'status': 'Cancelled',
+      });
+    } catch (e) {
+      print("Error cancelling meeting: $e");
+      rethrow;
+    }
+  }
+
+  // 14. NEW: Stream Meetings for the Lecturer
+  // This will show the lecturer all requests sent to them
+  Stream<QuerySnapshot> getLecturerMeetings(String lecturerUid) {
+    return _db.collection('meetings')
+        .where('lecturerUid', isEqualTo: lecturerUid)
+        .orderBy('createdAt', descending: true)
+        .snapshots();
+  }
+
+  // 15. NEW: Update Meeting Status (Lecturer Side)
+  // Used for 'Accepted', 'Declined', or 'Completed'
+  Future<void> updateMeetingStatus(String meetingId, String newStatus) async {
+    try {
+      await _db.collection('meetings').doc(meetingId).update({
+        'status': newStatus,
+      });
+    } catch (e) {
+      print("Error updating meeting status: $e");
+      rethrow;
+    }
+  }
+
+  // Fetch specific user data by UID
+Future<DocumentSnapshot> getUserData(String uid) {
+  return _db.collection('users').doc(uid).get();
+}
 }

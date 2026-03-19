@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:uniconnect/screens/auth/welcome_screen.dart';
+import 'package:uniconnect/screens/lecturer/lecturer_main_nav.dart';
 import 'package:uniconnect/screens/student/student_home.dart';
 import 'package:uniconnect/screens/student/student_main_nav.dart';
 import 'firebase_options.dart';
@@ -25,7 +26,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6C63FF)),
         useMaterial3: true,
       ),
-      home: const StudentMainNavigation(),
+      home: const WelcomeScreen(),
     );
   }
 }

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'filtered_lecturer_list_screen.dart'; // We'll build this nex
+import '../../services/database_service.dart'; 
+import 'filtered_lecturer_list_screen.dart';
+import '../../models/faculty_module_model.dart';
+
 
 class ModuleSelectionScreen extends StatelessWidget {
   final String facultyCode;
@@ -7,15 +10,6 @@ class ModuleSelectionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Mock data - In a real app, you'd fetch this from a DB filtered by facultyCode
-    final Map<String, List<String>> modulesByFaculty = {
-      'FOC': ['Data Structures', 'Algorithms', 'Mobile App Development', 'Cyber Security'],
-      'FOB': ['Business Management', 'Accounting', 'Marketing Strategy', 'Economics'],
-      'FOS': ['Organic Chemistry', 'Quantum Physics', 'Microbiology', 'Genetics'],
-    };
-
-    final List<String> modules = modulesByFaculty[facultyCode] ?? [];
-
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F9),
       appBar: AppBar(
@@ -36,34 +30,52 @@ class ModuleSelectionScreen extends StatelessWidget {
             child: Text("Select the module you need help with", 
               style: TextStyle(color: Colors.grey, fontSize: 15)),
           ),
+          // --- DYNAMIC DATA FETCHING ---
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(24),
-              itemCount: modules.length,
-              itemBuilder: (context, index) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: ListTile(
-                    tileColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: Colors.grey.shade100),
-                    ),
-                    title: Text(modules[index], 
-                      style: const TextStyle(fontWeight: FontWeight.w500)),
-                    trailing: const Icon(Icons.chevron_right, size: 18),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => FilteredLecturerListScreen(
-                            moduleName: modules[index],
-                            facultyCode: facultyCode,
-                          ),
+            child: FutureBuilder<List<ModuleModel>>(
+              future: DatabaseService().getModulesByFaculty(facultyCode),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator(color: Color(0xFF10B981)));
+                }
+
+                if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Center(child: Text("No modules found for this faculty."));
+                }
+
+                final modules = snapshot.data!;
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(24),
+                  itemCount: modules.length,
+                  itemBuilder: (context, index) {
+                    final module = modules[index];
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: ListTile(
+                        tileColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(color: Colors.grey.shade100),
                         ),
-                      );
-                    },
-                  ),
+                        title: Text(module.name, // From ModuleModel
+                          style: const TextStyle(fontWeight: FontWeight.w500)),
+                        trailing: const Icon(Icons.chevron_right, size: 18),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => FilteredLecturerListScreen(
+                                moduleName: module.name,
+                                facultyCode: facultyCode,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
                 );
               },
             ),

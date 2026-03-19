@@ -48,13 +48,27 @@ class MeetingCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusBadge() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: meeting.statusColor, borderRadius: BorderRadius.circular(8)),
-      child: Text(meeting.status, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
-    );
-  }
+// Inside your MeetingCard widget...
+
+Widget _buildStatusBadge() {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    decoration: BoxDecoration(
+      // USE THE DYNAMIC COLOR FROM THE MODEL
+      color: meeting.statusColor, 
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Text(
+      // USE THE DYNAMIC STATUS STRING FROM THE MODEL
+      meeting.status, 
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 12,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
+  );
+}
 
   Widget _buildInfoRow(IconData icon, String text) {
     return Padding(

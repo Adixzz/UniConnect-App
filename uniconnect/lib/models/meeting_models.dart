@@ -7,7 +7,7 @@ class Meeting {
   final String date;
   final String time;
   final String location;
-  final String status; // 'Confirmed' or 'Pending'
+  final String status;
   final bool showCancelButton;
 
   Meeting({
@@ -21,6 +21,20 @@ class Meeting {
     this.showCancelButton = false,
   });
 
-  // Helper to get status color
-  Color get statusColor => status == 'Confirmed' ? const Color(0xFF22C55E) : const Color(0xFFF59E0B);
+  // This helper ensures the UI shows the correct color for every status
+  Color get statusColor {
+    switch (status) {
+      case 'Confirmed':
+      case 'Accepted':
+        return const Color(0xFF22C55E); // Green
+      case 'Pending':
+        return const Color(0xFFF59E0B); // Orange/Amber
+      case 'Cancelled':
+        return Colors.redAccent;        // Red
+      case 'Completed':
+        return Colors.blueAccent;       // Blue
+      default:
+        return Colors.grey;
+    }
+  }
 }
