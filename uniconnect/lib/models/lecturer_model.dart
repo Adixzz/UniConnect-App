@@ -20,6 +20,7 @@ class LecturerModel {
     required this.modules,
     this.availability = 'Not in Lecture',
     this.role = 'lecturer',
+    required this.location,
   
   });
 
@@ -34,6 +35,7 @@ class LecturerModel {
       'modules': modules,
       'availability': availability,
       'role': role,
+      'location': location,
       'createdAt': DateTime.now().toIso8601String(),
     };
   }
@@ -49,6 +51,7 @@ class LecturerModel {
     modules: List<String>.from(map['modules'] ?? []),
     availability: map['availability'] ?? 'Not in Lecture',
     role: map['role'] ?? 'lecturer',
+    location: map['location'] ?? 'Not Specified', // Maps from Firestore
   );
 }
 }

@@ -27,9 +27,9 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
       lastDate: DateTime.now().add(const Duration(days: 30)),
       builder: (context, child) {
         return Theme(
-          data: Theme.of(
-            context,
-          ).copyWith(colorScheme: ColorScheme.light(primary: primaryGreen)),
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(primary: primaryGreen),
+          ),
           child: child!,
         );
       },
@@ -57,11 +57,7 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new,
-            color: Colors.black87,
-            size: 20,
-          ),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -70,7 +66,7 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Lecturer Summary Card
+            // 1. UPDATED SUMMARY CARD (Now shows Location)
             _buildLecturerSummary(),
             const SizedBox(height: 32),
 
@@ -133,24 +129,16 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
               height: 56,
               child: ElevatedButton(
                 onPressed: () async {
-                  // 1. Check if user is logged in
                   final currentUser = FirebaseAuth.instance.currentUser;
 
                   if (currentUser == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          "Error: You must be logged in to request a meeting.",
-                        ),
-                      ),
+                      const SnackBar(content: Text("Error: You must be logged in.")),
                     );
                     return;
                   }
 
-                  // 2. Validation
-                  if (selectedDate == null ||
-                      selectedTime == null ||
-                      _reasonController.text.isEmpty) {
+                  if (selectedDate == null || selectedTime == null || _reasonController.text.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text("Please fill all fields")),
                     );
@@ -158,20 +146,16 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
                   }
 
                   try {
-                    // 3. Save to Database using your DatabaseService
+                    // 2. DYNAMIC LOCATION SAVED HERE
                     await DatabaseService().saveMeetingRequest(
-                      studentUid:
-                          currentUser.uid, // Get real UID from Firebase Auth
+                      studentUid: currentUser.uid,
                       lecturerUid: widget.lecturer.uid,
                       lecturerName: widget.lecturer.name,
-                      moduleName: widget
-                          .lecturer
-                          .modules
-                          .first, // You might want to let the user pick the module too
-                      date:
-                          "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
+                      moduleName: widget.lecturer.modules.first,
+                      date: "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
                       time: selectedTime!.format(context),
                       reason: _reasonController.text,
+                      location: widget.lecturer.location, // Dynamic Location from Model
                     );
 
                     _showSuccessDialog();
@@ -183,17 +167,11 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryGreen,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
                 child: const Text(
                   "Submit Request",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                 ),
               ),
             ),
@@ -209,9 +187,7 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
       ),
       child: Row(
         children: [
@@ -220,40 +196,44 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
             backgroundColor: primaryGreen.withOpacity(0.1),
             child: Text(
               widget.lecturer.name[0],
-              style: TextStyle(
-                color: primaryGreen,
-                fontWeight: FontWeight.bold,
-                fontSize: 24,
-              ),
+              style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold, fontSize: 24),
             ),
           ),
           const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                widget.lecturer.name,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.lecturer.name,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-              ),
-              Text(
-                widget.lecturer.faculty,
-                style: TextStyle(color: Colors.grey.shade500),
-              ),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  widget.lecturer.faculty,
+                  style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                ),
+                const SizedBox(height: 4),
+                // NEW: VISUAL OFFICE LOCATION
+                Row(
+                  children: [
+                    const Icon(Icons.location_on, size: 14, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Text(
+                      widget.lecturer.location,
+                      style: const TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPickerTile({
-    required IconData icon,
-    required String text,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildPickerTile({required IconData icon, required String text, required VoidCallback onTap}) {
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -277,6 +257,7 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
   void _showSuccessDialog() {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Icon(Icons.check_circle, color: Colors.green, size: 60),
@@ -287,14 +268,9 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // Close dialog
-              // Navigate specifically to your main app entry point
-              // Replace 'MainNavigation' with whatever your home/bottom nav class is called
               Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => const StudentMainNavigation(),
-                ),
+                MaterialPageRoute(builder: (context) => const StudentMainNavigation()),
                 (route) => false,
               );
             },
