@@ -46,13 +46,6 @@ class AddUserScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 0,
-        selectedItemColor: Colors.blue,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.verified_user), label: "Add User"),
-        ]
-      ),
     );
   }
 

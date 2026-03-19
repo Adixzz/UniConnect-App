@@ -106,7 +106,6 @@ class _ClubFormScreenState extends State<ClubFormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // title changes depending on whether adding or editing
         title: Text(_isEditing ? "Edit Club" : "Add Club"),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
@@ -132,7 +131,6 @@ class _ClubFormScreenState extends State<ClubFormScreen> {
                       _presidentController, "President / Contact", Icons.person),
                   const SizedBox(height: 16),
 
-                  // category dropdown
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
