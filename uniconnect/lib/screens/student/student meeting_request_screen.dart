@@ -42,40 +42,58 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
             children: [
               const Text(
                 'Meetings',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.black87),
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
               ),
               const SizedBox(height: 24),
-              
+
               // New 3-Tab Toggle
               _buildTabToggle(),
-              
+
               const SizedBox(height: 24),
-              
+
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
                   stream: DatabaseService().getStudentMeetings(currentUid),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator(color: Color(0xFF10B981)));
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF10B981),
+                        ),
+                      );
                     }
 
                     if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                       return _buildEmptyState();
                     }
 
-                    final List<MeetingDataContainer> allMeetings = snapshot.data!.docs.map((doc) {
+                    final List<MeetingDataContainer>
+                    allMeetings = snapshot.data!.docs.map((doc) {
                       final data = doc.data() as Map<String, dynamic>;
+                      final String status =
+                          data['status'] ?? "Pending"; // Capture status first
+
                       return MeetingDataContainer(
                         id: doc.id,
                         meeting: Meeting(
-                          initials: (data['lecturerName'] ?? "U")[0].toUpperCase(),
+                          initials: (data['lecturerName'] ?? "U")[0]
+                              .toUpperCase(),
                           name: data['lecturerName'] ?? "Unknown",
                           subject: data['moduleName'] ?? "General",
                           date: data['date'] ?? "",
                           time: data['time'] ?? "",
-                          location: "Consultation Room",
-                          status: data['status'] ?? "Pending",
-                          showCancelButton: true, // Allow cancel for active requests
+                          // Use the dynamic location from the database we set up!
+                          location: data['location'] ?? "Consultation Room",
+                          status: status,
+                          // ONLY show the button if it's Pending or Accepted
+                          showCancelButton:
+                              status == 'Pending' ||
+                              status == 'Accepted' ||
+                              status == 'Confirmed',
                         ),
                       );
                     }).toList();
@@ -86,19 +104,24 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
                     final filteredData = allMeetings.where((container) {
                       final m = container.meeting;
                       DateTime meetingTime = _parseDateTime(m.date, m.time);
-                      bool isExpired = now.isAfter(meetingTime.add(const Duration(minutes: 30)));
+                      bool isExpired = now.isAfter(
+                        meetingTime.add(const Duration(minutes: 30)),
+                      );
 
                       if (selectedTab == MeetingTab.upcoming) {
                         // Confirmed/Accepted only + Not Expired
-                        return (m.status == 'Accepted' || m.status == 'Confirmed') && !isExpired;
-                      } 
-                      else if (selectedTab == MeetingTab.pending) {
+                        return (m.status == 'Accepted' ||
+                                m.status == 'Confirmed') &&
+                            !isExpired;
+                      } else if (selectedTab == MeetingTab.pending) {
                         // Pending only + Not Expired
                         return m.status == 'Pending' && !isExpired;
-                      } 
-                      else {
+                      } else {
                         // Past: Anything Finished OR anything Expired
-                        bool isFinished = (m.status == 'Completed' || m.status == 'Cancelled' || m.status == 'Declined');
+                        bool isFinished =
+                            (m.status == 'Completed' ||
+                            m.status == 'Cancelled' ||
+                            m.status == 'Declined');
                         return isFinished || isExpired;
                       }
                     }).toList();
@@ -107,7 +130,8 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
 
                     return ListView.separated(
                       itemCount: filteredData.length,
-                      separatorBuilder: (context, index) => const SizedBox(height: 12),
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final container = filteredData[index];
                         return MeetingCard(
@@ -116,9 +140,15 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
                             bool? confirm = await _showCancelDialog();
                             if (confirm == true) {
                               final messenger = ScaffoldMessenger.of(context);
-                              await DatabaseService().cancelMeeting(container.id);
+                              await DatabaseService().cancelMeeting(
+                                container.id,
+                              );
                               if (!mounted) return;
-                              messenger.showSnackBar(const SnackBar(content: Text("Meeting cancelled")));
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text("Meeting cancelled"),
+                                ),
+                              );
                             }
                           },
                         );
@@ -164,8 +194,13 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
           decoration: BoxDecoration(
             color: isSelected ? Colors.white : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
-            boxShadow: isSelected 
-                ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)] 
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 4,
+                    ),
+                  ]
                 : [],
           ),
           child: Text(
@@ -189,8 +224,8 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
       int month = int.parse(dateParts[1]);
       int year = int.parse(dateParts[2]);
       List<String> timeParts = timeStr.split(' ');
-      String timeOnly = timeParts[0]; 
-      String period = timeParts[1]; 
+      String timeOnly = timeParts[0];
+      String period = timeParts[1];
       int hour = int.parse(timeOnly.split(':')[0]);
       int minute = int.parse(timeOnly.split(':')[1]);
       if (period == 'PM' && hour != 12) hour += 12;
@@ -208,8 +243,14 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
         title: const Text("Cancel Meeting"),
         content: const Text("Are you sure?"),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("No")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Yes")),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("No"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Yes"),
+          ),
         ],
       ),
     );
@@ -220,8 +261,10 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
     if (selectedTab == MeetingTab.upcoming) msg = "No confirmed meetings.";
     if (selectedTab == MeetingTab.pending) msg = "No pending requests.";
     if (selectedTab == MeetingTab.past) msg = "No past history.";
-    
-    return Center(child: Text(msg, style: const TextStyle(color: Colors.grey)));
+
+    return Center(
+      child: Text(msg, style: const TextStyle(color: Colors.grey)),
+    );
   }
 
   Widget _buildRequestButton() {
@@ -229,9 +272,20 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
       width: double.infinity,
       height: 56,
       child: ElevatedButton(
-        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RequestChoiceScreen())),
-        style: ElevatedButton.styleFrom(backgroundColor: primaryGreen, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-        child: const Text('Request a Meeting', style: TextStyle(color: Colors.white)),
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const RequestChoiceScreen()),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: primaryGreen,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: const Text(
+          'Request a Meeting',
+          style: TextStyle(color: Colors.white),
+        ),
       ),
     );
   }
