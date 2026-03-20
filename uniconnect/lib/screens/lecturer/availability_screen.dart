@@ -18,6 +18,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
   final DatabaseService _dbService = DatabaseService();
   bool _isAvailable = true;
   String _currentStatus = "Available";
+  bool _isAutoLocked = false; // New: Tracks if the lecturer is currently in a class
   
   List<Map<String, dynamic>> availableSlots = [];
   List<String> uniqueDates = [];
@@ -34,14 +35,33 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     _fetchSpreadsheetSlots();
   }
 
+  // --- 1. TIME PARSING HELPER ---
+  // Converts spreadsheet times like "9.00 AM" into comparable DateTime objects
+  DateTime _parseTime(String timeStr, DateTime contextDate) {
+    try {
+      final parts = timeStr.trim().split(" ");
+      final hm = parts[0].split(".");
+      int hour = int.parse(hm[0]);
+      int min = int.parse(hm[1]);
+      if (parts[1] == "PM" && hour != 12) hour += 12;
+      if (parts[1] == "AM" && hour == 12) hour = 0;
+      return DateTime(contextDate.year, contextDate.month, contextDate.day, hour, min);
+    } catch (e) {
+      return DateTime(contextDate.year, contextDate.month, contextDate.day, 0, 0);
+    }
+  }
+
   void _loadCurrentStatus() async {
     try {
       final doc = await _dbService.getUserData(widget.currentLecturer.uid);
       if (doc.exists && doc.data() != null) {
         final data = doc.data() as Map<String, dynamic>;
         setState(() {
-          _currentStatus = data['availability'] ?? "Available";
-          _isAvailable = _currentStatus == "Available";
+          // Only update manual status if we aren't currently auto-locked by a lecture
+          if (!_isAutoLocked) {
+            _currentStatus = data['availability'] ?? "Available";
+            _isAvailable = _currentStatus == "Available";
+          }
         });
       }
     } catch (e) {
@@ -60,7 +80,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     }
   }
 
-  // --- UPDATED PARSING LOGIC TO HIDE PREVIOUS DAYS ---
+  // --- 2. UPDATED PARSING LOGIC WITH AUTO-STATUS DETECTION ---
   Future<void> _fetchSpreadsheetSlots() async {
     setState(() => _isLoadingSlots = true);
     try {
@@ -75,11 +95,42 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
         List<Map<String, dynamic>> fetchedSlots = [];
         Set<String> dateSet = {"All"};
 
-        // Current date for comparison (midnight)
         DateTime now = DateTime.now();
-        DateTime today = DateTime(now.year, now.month, now.day);
+        DateTime todayMidnight = DateTime(now.year, now.month, now.day);
 
-        // 1. Identify Weekend Columns
+        // --- A. DETECT IF IN LECTURE RIGHT NOW ---
+        String todayStr = DateFormat("MMM d").format(now).replaceAll(' ', '');
+        int todayCol = -1;
+        for (int j = 0; j < dates.length; j++) {
+          if (dates[j].trim().replaceAll(' ', '') == todayStr) {
+            todayCol = j;
+            break;
+          }
+        }
+
+        bool currentlyInLecture = false;
+        String lectureName = "";
+
+        if (todayCol != -1) {
+          for (int i = 1; i < sheet.length; i++) {
+            List<String> row = sheet[i];
+            if (row.length < 2) continue;
+            DateTime start = _parseTime(row[0], now);
+            DateTime end = _parseTime(row[1], now);
+            
+            // Check if current system time is within this slot
+            if (now.isAfter(start.subtract(const Duration(seconds: 1))) && now.isBefore(end)) {
+              String content = (todayCol < row.length) ? row[todayCol].trim() : "";
+              if (content.isNotEmpty && !content.toUpperCase().contains("WEEKEND")) {
+                currentlyInLecture = true;
+                lectureName = content;
+              }
+              break;
+            }
+          }
+        }
+
+        // --- B. WEEKEND SCANNER ---
         Set<int> weekendColumnIndices = {};
         for (var row in sheet) {
           for (int j = 0; j < row.length; j++) {
@@ -89,51 +140,50 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
           }
         }
 
+        // --- C. PARSE UPCOMING SLOTS ---
         for (int i = 1; i < sheet.length; i++) {
           List<String> row = sheet[i];
           if (row.length < 2) continue;
-          
-          String start = row[0].trim();
-          String end = row[1].trim();
+          String startTime = row[0].trim();
+          String endTime = row[1].trim();
 
           for (int j = 2; j < dates.length; j++) {
             String dateString = dates[j].trim();
             if (dateString.isEmpty) continue; 
 
-            // --- NEW: PREVIOUS DAY FILTER ---
+            // Previous Day Filter
             bool isPastDay = false;
             try {
-              // Parse "Mar 20" format
               String cleanDate = dateString.replaceAll(RegExp(r'[^a-zA-Z0-9]'), ' ');
               DateTime parsedDate = DateFormat("MMM d").parse(cleanDate);
-              // Check against year 2026 context
-              DateTime fullDate = DateTime(2026, parsedDate.month, parsedDate.day);
-              
-              if (fullDate.isBefore(today)) {
-                isPastDay = true;
-              }
-            } catch (e) {
-              // If date format is weird, we keep it to be safe
-            }
+              DateTime fullDate = DateTime(now.year, parsedDate.month, parsedDate.day);
+              if (fullDate.isBefore(todayMidnight)) isPastDay = true;
+            } catch (e) {}
 
-            if (isPastDay) continue; // Skip if the day has already passed
-            if (weekendColumnIndices.contains(j)) continue; // Skip if weekend
+            if (isPastDay || weekendColumnIndices.contains(j)) continue;
 
             String cellValue = (j < row.length) ? row[j].trim() : "";
-
             if (cellValue.isEmpty) {
-              fetchedSlots.add({
-                "date": dateString,
-                "time": "$start - $end",
-              });
+              fetchedSlots.add({"date": dateString, "time": "$startTime - $endTime"});
               dateSet.add(dateString);
             }
           }
         }
+
         setState(() {
           availableSlots = fetchedSlots;
           uniqueDates = dateSet.toList()..sort();
           _isLoadingSlots = false;
+          _isAutoLocked = currentlyInLecture;
+
+          // If in lecture, lock status and update Firestore immediately
+          if (_isAutoLocked) {
+            _currentStatus = "In a Lecture ($lectureName)";
+            _isAvailable = false;
+            _updateFirestoreAvailability(_currentStatus);
+          } else {
+            _loadCurrentStatus(); // Revert to manual status if free
+          }
         });
       }
     } catch (e) {
@@ -142,27 +192,30 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     }
   }
 
-  // ... (ToggleStatus, OpenSpreadsheet, and build methods)
-
-  void _toggleStatus(bool value) async {
-    String newStatus = value ? "Available" : "Not Available";
-    setState(() {
-      _isAvailable = value;
-      _currentStatus = newStatus;
-    });
-
+  // --- 3. FIRESTORE SYNC ---
+  Future<void> _updateFirestoreAvailability(String status) async {
     try {
       final query = await FirebaseFirestore.instance
           .collection('lecturers')
           .where('staffId', isEqualTo: widget.currentLecturer.staffId)
           .get();
-
       if (query.docs.isNotEmpty) {
-        await query.docs.first.reference.update({'availability': newStatus});
+        await query.docs.first.reference.update({'availability': status});
       }
     } catch (e) {
-      debugPrint("Status update failed: $e");
+      debugPrint("Firestore Error: $e");
     }
+  }
+
+  void _toggleStatus(bool value) async {
+    if (_isAutoLocked) return; // Prevent manual changes during lectures
+    
+    String newStatus = value ? "Available" : "Not Available";
+    setState(() {
+      _isAvailable = value;
+      _currentStatus = newStatus;
+    });
+    _updateFirestoreAvailability(newStatus);
   }
 
   Future<void> _openSpreadsheet() async {
@@ -255,26 +308,40 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 15)],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15)],
       ),
       child: Row(
         children: [
           CircleAvatar(
             radius: 25,
-            backgroundColor: _isAvailable ? Colors.green.shade50 : Colors.red.shade50,
-            child: Icon(_isAvailable ? Icons.check_circle : Icons.do_not_disturb_on, color: _isAvailable ? Colors.green : Colors.red),
+            backgroundColor: _isAutoLocked ? Colors.orange.shade50 : (_isAvailable ? Colors.green.shade50 : Colors.red.shade50),
+            child: Icon(
+              _isAutoLocked ? Icons.school : (_isAvailable ? Icons.check_circle : Icons.do_not_disturb_on), 
+              color: _isAutoLocked ? Colors.orange : (_isAvailable ? Colors.green : Colors.red)
+            ),
           ),
           const SizedBox(width: 15),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Global Visibility", style: TextStyle(color: Colors.grey, fontSize: 12)),
-                Text(_currentStatus, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _isAvailable ? Colors.green : Colors.red)),
+                Text(_isAutoLocked ? "Auto-Status (Locked)" : "Global Visibility", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                Text(_currentStatus, 
+                  style: TextStyle(
+                    fontSize: 16, 
+                    fontWeight: FontWeight.bold, 
+                    color: _isAutoLocked ? Colors.orange : (_isAvailable ? Colors.green : Colors.red)
+                  )
+                ),
               ],
             ),
           ),
-          Switch.adaptive(value: _isAvailable, activeTrackColor: Colors.green, onChanged: _toggleStatus),
+          // Toggle is DISABLED (onChanged: null) if currently in a lecture
+          Switch.adaptive(
+            value: _isAvailable, 
+            activeTrackColor: Colors.green, 
+            onChanged: _isAutoLocked ? null : _toggleStatus
+          ),
         ],
       ),
     );
