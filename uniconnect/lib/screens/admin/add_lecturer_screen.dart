@@ -92,6 +92,7 @@ class _AddLecturerScreenState extends State<AddLecturerScreen> {
       pin: pin,
       faculty: _selectedFaculty!,
       modules: _selectedModules,
+      location: 'Not Specified', // Default value for location
     );
 
     String? errorMessage = await _authService.registerLecturer(lecturer);

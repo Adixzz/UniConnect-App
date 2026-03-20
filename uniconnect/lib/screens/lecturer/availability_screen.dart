@@ -18,7 +18,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
   final DatabaseService _dbService = DatabaseService();
   bool _isAvailable = true;
   String _currentStatus = "Available";
-  bool _isAutoLocked = false; // New: Tracks if the lecturer is currently in a class
+  bool _isAutoLocked = false; 
   
   List<Map<String, dynamic>> availableSlots = [];
   List<String> uniqueDates = [];
@@ -35,7 +35,6 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     _fetchSpreadsheetSlots();
   }
 
-  // --- 1. TIME PARSING HELPER ---
   // Converts spreadsheet times like "9.00 AM" into comparable DateTime objects
   DateTime _parseTime(String timeStr, DateTime contextDate) {
     try {
@@ -54,10 +53,13 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
   void _loadCurrentStatus() async {
     try {
       final doc = await _dbService.getUserData(widget.currentLecturer.uid);
+      
+      // SAFETY CHECK: Ensure the screen is still active before updating UI
+      if (!mounted) return;
+
       if (doc.exists && doc.data() != null) {
         final data = doc.data() as Map<String, dynamic>;
         setState(() {
-          // Only update manual status if we aren't currently auto-locked by a lecture
           if (!_isAutoLocked) {
             _currentStatus = data['availability'] ?? "Available";
             _isAvailable = _currentStatus == "Available";
@@ -72,7 +74,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
   void _jumpToToday() {
     String todayStr = DateFormat("MMM d").format(DateTime.now()).replaceAll(' ', '');
     if (uniqueDates.contains(todayStr)) {
-      setState(() => _selectedDate = todayStr);
+      if (mounted) setState(() => _selectedDate = todayStr);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("No slots synced for today ($todayStr).")),
@@ -80,11 +82,17 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     }
   }
 
-  // --- 2. UPDATED PARSING LOGIC WITH AUTO-STATUS DETECTION ---
   Future<void> _fetchSpreadsheetSlots() async {
+    // SAFETY CHECK: Ensure widget is mounted before setting loading state
+    if (!mounted) return;
     setState(() => _isLoadingSlots = true);
+    
     try {
       final response = await http.get(Uri.parse(exportUrl));
+      
+      // SAFETY CHECK: Stop processing if user navigated away during the HTTP request
+      if (!mounted) return;
+
       if (response.statusCode == 200) {
         final data = response.body;
         List<List<String>> sheet = data.split("\n").map((row) => row.split(",")).toList();
@@ -118,7 +126,6 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
             DateTime start = _parseTime(row[0], now);
             DateTime end = _parseTime(row[1], now);
             
-            // Check if current system time is within this slot
             if (now.isAfter(start.subtract(const Duration(seconds: 1))) && now.isBefore(end)) {
               String content = (todayCol < row.length) ? row[todayCol].trim() : "";
               if (content.isNotEmpty && !content.toUpperCase().contains("WEEKEND")) {
@@ -151,7 +158,6 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
             String dateString = dates[j].trim();
             if (dateString.isEmpty) continue; 
 
-            // Previous Day Filter
             bool isPastDay = false;
             try {
               String cleanDate = dateString.replaceAll(RegExp(r'[^a-zA-Z0-9]'), ' ');
@@ -170,29 +176,33 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
           }
         }
 
-        setState(() {
-          availableSlots = fetchedSlots;
-          uniqueDates = dateSet.toList()..sort();
-          _isLoadingSlots = false;
-          _isAutoLocked = currentlyInLecture;
+        // SAFETY CHECK: Update state only if screen is still visible
+        if (mounted) {
+          setState(() {
+            availableSlots = fetchedSlots;
+            uniqueDates = dateSet.toList()..sort();
+            _isLoadingSlots = false;
+            _isAutoLocked = currentlyInLecture;
 
-          // If in lecture, lock status and update Firestore immediately
-          if (_isAutoLocked) {
-            _currentStatus = "In a Lecture ($lectureName)";
-            _isAvailable = false;
-            _updateFirestoreAvailability(_currentStatus);
-          } else {
-            _loadCurrentStatus(); // Revert to manual status if free
-          }
-        });
+            if (_isAutoLocked) {
+              _currentStatus = "In a Lecture ($lectureName)";
+              _isAvailable = false;
+              _updateFirestoreAvailability(_currentStatus);
+            } else {
+              _loadCurrentStatus(); 
+            }
+          });
+        }
       }
     } catch (e) {
       debugPrint("Sync Error: $e");
-      setState(() => _isLoadingSlots = false);
+      // SAFETY CHECK: Reset loading state gracefully on error
+      if (mounted) {
+        setState(() => _isLoadingSlots = false);
+      }
     }
   }
 
-  // --- 3. FIRESTORE SYNC ---
   Future<void> _updateFirestoreAvailability(String status) async {
     try {
       final query = await FirebaseFirestore.instance
@@ -208,13 +218,18 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
   }
 
   void _toggleStatus(bool value) async {
-    if (_isAutoLocked) return; // Prevent manual changes during lectures
+    if (_isAutoLocked) return;
     
     String newStatus = value ? "Available" : "Not Available";
-    setState(() {
-      _isAvailable = value;
-      _currentStatus = newStatus;
-    });
+    
+    // SAFETY CHECK: Update local toggle UI
+    if (mounted) {
+      setState(() {
+        _isAvailable = value;
+        _currentStatus = newStatus;
+      });
+    }
+    
     _updateFirestoreAvailability(newStatus);
   }
 
@@ -224,7 +239,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     }
   }
 
-  @override
+ @override
   Widget build(BuildContext context) {
     final filteredList = _selectedDate == "All" 
         ? availableSlots 
@@ -233,10 +248,12 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FD),
       appBar: AppBar(
-        title: const Text("Availability Sync", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text("Availability Sync", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
+        // --- REMOVED leading icon and disabled auto back button ---
+        automaticallyImplyLeading: false, 
         actions: [
           TextButton(
             onPressed: _jumpToToday, 
@@ -281,7 +298,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
               label: Text(dateLabel),
               selected: isSelected,
               onSelected: (bool value) {
-                setState(() => _selectedDate = dateLabel);
+                if (mounted) setState(() => _selectedDate = dateLabel);
               },
               selectedColor: Colors.blue.shade100,
               checkmarkColor: Colors.blue,
@@ -336,7 +353,6 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
               ],
             ),
           ),
-          // Toggle is DISABLED (onChanged: null) if currently in a lecture
           Switch.adaptive(
             value: _isAvailable, 
             activeTrackColor: Colors.green, 

@@ -112,6 +112,8 @@ class AuthService {
           pin: lecturer.pin,
           faculty: lecturer.faculty,
           modules: lecturer.modules,
+          role: 'lecturer',
+          location: lecturer.location,
         ),
       );
 

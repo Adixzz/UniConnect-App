@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'lecturer_home.dart';
 import 'availability_screen.dart';
-// Make sure this path points to where your RequestsScreen is located!
 import 'lecturer_request.dart';
-// Make sure this path matches where your model is saved!
+// 1. ADD THIS IMPORT
+import 'lecturer_settings.dart'; 
 import '../../models/lecturer_model.dart';
 
 class LecturerMainNavigation extends StatefulWidget {
-  // 1. Navigation screen requires the full lecturer model
   final LecturerModel currentLecturer;
 
   const LecturerMainNavigation({super.key, required this.currentLecturer});
@@ -18,23 +17,18 @@ class LecturerMainNavigation extends StatefulWidget {
 
 class _LecturerMainNavigationState extends State<LecturerMainNavigation> {
   int _selectedIndex = 0;
-
-  // 2. Late list built after the widget receives data
   late List<Widget> _screens;
 
-  @override
+ @override
   void initState() {
     super.initState();
-    // 3. Initialize screens and pass the FULL model to each child widget
     _screens = [
       LecturerHomeScreen(currentLecturer: widget.currentLecturer), 
-      
-      // FIXED: Passing the entire model to match the updated AvailabilityScreen constructor
       AvailabilityScreen(currentLecturer: widget.currentLecturer), 
-      
       RequestsScreen(currentLecturer: widget.currentLecturer), 
       
-      const Center(child: Text("Settings Screen")), 
+      // Updated this line to pass the model
+      LecturerSettingsScreen(currentLecturer: widget.currentLecturer), 
     ];
   }
 
@@ -47,7 +41,6 @@ class _LecturerMainNavigationState extends State<LecturerMainNavigation> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // The body changes based on which icon is tapped
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex, 

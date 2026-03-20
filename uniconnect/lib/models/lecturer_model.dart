@@ -8,6 +8,7 @@ class LecturerModel {
   final List<String> modules;
   final String availability;
   final String role;
+  final String location;
 
   LecturerModel({
     required this.uid,
@@ -19,6 +20,7 @@ class LecturerModel {
     required this.modules,
     this.availability = 'Not in Lecture',
     this.role = 'lecturer',
+    required this.location,
   });
 
   // Converts the LecturerModel object into a Map (for uploading to Firestore)
@@ -34,6 +36,7 @@ class LecturerModel {
       'availability': availability,
       'role': role,
       'createdAt': DateTime.now().toIso8601String(),
+      'location': location,
     };
   }
 
@@ -46,6 +49,8 @@ class LecturerModel {
       staffId: map['staffId'] ?? '',
       pin: map['pin'] ?? '',
       faculty: map['faculty'] ?? '',
+      // FIXED: Changed 'data' to 'map' to match the parameter name
+      location: map['location'] ?? 'Not Specified', 
       // Safely handle the list conversion
       modules: List<String>.from(map['modules'] ?? []),
       availability: map['availability'] ?? 'Not in Lecture',
