@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:uniconnect/screens/student/student_main_nav.dart';
 import '../../models/lecturer_model.dart';
 import '../../services/database_service.dart';
@@ -6,12 +7,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 class MeetingDetailsScreen extends StatefulWidget {
   final LecturerModel lecturer;
-  final String? selectedModuleName; // Added parameter
+  final String? selectedModuleName;
 
   const MeetingDetailsScreen({
     super.key, 
     required this.lecturer, 
-    this.selectedModuleName // Optional for Direct Search
+    this.selectedModuleName
   });
 
   @override
@@ -21,33 +22,65 @@ class MeetingDetailsScreen extends StatefulWidget {
 class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
   final Color primaryGreen = const Color(0xFF10B981);
   final _reasonController = TextEditingController();
-  DateTime? selectedDate;
-  TimeOfDay? selectedTime;
+  
+  // State for slots
+  List<Map<String, dynamic>> availableSlots = [];
+  Map<String, dynamic>? selectedSlot;
+  bool isLoading = true;
 
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 30)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(primary: primaryGreen),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null) setState(() => selectedDate = picked);
+  // The URL for the lecturer's timetable (Google Sheet CSV)
+  final String sheetUrl =
+      "https://docs.google.com/spreadsheets/d/1N-8ZbnpqlKt2bsdk4UnBYCKJM6slHK2aHyKNMYaHVQA/export?format=csv";
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAvailableSlots();
   }
 
-  Future<void> _selectTime(BuildContext context) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
-    if (picked != null) setState(() => selectedTime = picked);
+  // --- LOGIC TO FETCH AND PARSE SLOTS ---
+  Future<void> _fetchAvailableSlots() async {
+    try {
+      final response = await http.get(Uri.parse(sheetUrl));
+
+      if (response.statusCode == 200) {
+        final data = response.body;
+        List<List<String>> sheet = data
+            .split("\n")
+            .map((row) => row.split(","))
+            .toList();
+
+        List<String> dates = sheet[0];
+        List<Map<String, dynamic>> fetchedSlots = [];
+
+        // Parsing logic from your demo
+        for (int i = 1; i < sheet.length; i++) {
+          List<String> row = sheet[i];
+          if (row.length < 3) continue;
+
+          String start = row[0].trim();
+          String end = row[1].trim();
+
+          for (int j = 2; j < row.length; j++) {
+            // If the cell is empty, the lecturer is free
+            if (row[j].trim().isEmpty) {
+              fetchedSlots.add({
+                "date": dates[j].trim(),
+                "time": "$start - $end",
+              });
+            }
+          }
+        }
+
+        setState(() {
+          availableSlots = fetchedSlots;
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() => isLoading = false);
+      debugPrint("Error fetching slots: $e");
+    }
   }
 
   @override
@@ -74,31 +107,16 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
             _buildLecturerSummary(),
             const SizedBox(height: 32),
 
-            const Text("Select Date & Time", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildPickerTile(
-                    icon: Icons.calendar_today,
-                    text: selectedDate == null
-                        ? "Pick Date"
-                        : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
-                    onTap: () => _selectDate(context),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildPickerTile(
-                    icon: Icons.access_time,
-                    text: selectedTime == null
-                        ? "Pick Time"
-                        : selectedTime!.format(context),
-                    onTap: () => _selectTime(context),
-                  ),
-                ),
-              ],
+            const Text(
+              "Select an Available Slot",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 16),
+            
+            isLoading 
+              ? const Center(child: CircularProgressIndicator(color: Color(0xFF10B981)))
+              : _buildSlotSelector(),
+
             const SizedBox(height: 32),
 
             const Text("Reason for Meeting", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -123,48 +141,107 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: () async {
-                  final currentUser = FirebaseAuth.instance.currentUser;
-
-                  if (currentUser == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error: You must be logged in.")));
-                    return;
-                  }
-
-                  if (selectedDate == null || selectedTime == null || _reasonController.text.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please fill all fields")));
-                    return;
-                  }
-
-                  try {
-                    await DatabaseService().saveMeetingRequest(
-                      studentUid: currentUser.uid,
-                      lecturerUid: widget.lecturer.uid,
-                      lecturerName: widget.lecturer.name,
-                      // Relay Logic: Use passed name or fallback
-                      moduleName: widget.selectedModuleName ?? "No specific module selected",
-                      date: "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
-                      time: selectedTime!.format(context),
-                      reason: _reasonController.text,
-                      location: widget.lecturer.location,
-                    );
-
-                    _showSuccessDialog();
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to send request: $e")));
-                  }
-                },
+                // Button is only active if a slot is selected
+                onPressed: selectedSlot == null ? null : _submitMeetingRequest,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryGreen,
+                  disabledBackgroundColor: Colors.grey.shade300,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
-                child: const Text("Submit Request", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                child: const Text(
+                  "Submit Request",
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                ),
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildSlotSelector() {
+    if (availableSlots.isEmpty) {
+      return const Text("No available slots found in timetable.", style: TextStyle(color: Colors.red));
+    }
+
+    return SizedBox(
+      height: 120,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: availableSlots.length,
+        itemBuilder: (context, index) {
+          final slot = availableSlots[index];
+          bool isSelected = selectedSlot == slot;
+
+          return GestureDetector(
+            onTap: () => setState(() => selectedSlot = slot),
+            child: Container(
+              width: 150,
+              margin: const EdgeInsets.only(right: 12, bottom: 8),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isSelected ? primaryGreen : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isSelected ? primaryGreen : Colors.grey.shade200,
+                  width: 2,
+                ),
+                boxShadow: isSelected 
+                  ? [BoxShadow(color: primaryGreen.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))]
+                  : [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4)],
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    slot['date'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isSelected ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    slot['time'],
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isSelected ? Colors.white : Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _submitMeetingRequest() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+
+    if (currentUser == null) return;
+
+    try {
+      await DatabaseService().saveMeetingRequest(
+        studentUid: currentUser.uid,
+        lecturerUid: widget.lecturer.uid,
+        lecturerName: widget.lecturer.name,
+        moduleName: widget.selectedModuleName ?? "No specific module selected",
+        date: selectedSlot!['date'],
+        time: selectedSlot!['time'],
+        reason: _reasonController.text,
+        location: widget.lecturer.location,
+      );
+
+      _showSuccessDialog();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to send request: $e")),
+      );
+    }
   }
 
   Widget _buildLecturerSummary() {
@@ -180,7 +257,10 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
           CircleAvatar(
             radius: 30,
             backgroundColor: primaryGreen.withOpacity(0.1),
-            child: Text(widget.lecturer.name[0], style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold, fontSize: 24)),
+            child: Text(
+              widget.lecturer.name[0], 
+              style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold, fontSize: 24),
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -195,30 +275,16 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
                   children: [
                     const Icon(Icons.location_on, size: 14, color: Colors.grey),
                     const SizedBox(width: 4),
-                    Text(widget.lecturer.location, style: const TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500)),
+                    Text(
+                      widget.lecturer.location, 
+                      style: const TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500),
+                    ),
                   ],
                 ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildPickerTile({required IconData icon, required String text, required VoidCallback onTap}) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: primaryGreen),
-            const SizedBox(width: 8),
-            Text(text, style: const TextStyle(fontWeight: FontWeight.w500)),
-          ],
-        ),
       ),
     );
   }
@@ -234,7 +300,11 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const StudentMainNavigation()), (route) => false);
+              Navigator.pushAndRemoveUntil(
+                context, 
+                MaterialPageRoute(builder: (context) => const StudentMainNavigation()), 
+                (route) => false,
+              );
             },
             child: const Text("OK"),
           ),
