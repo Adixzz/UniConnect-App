@@ -43,7 +43,11 @@ class FilteredLecturerListScreen extends StatelessWidget {
   }
 
   Widget _buildLecturerTile(BuildContext context, LecturerModel lecturer) {
-    bool isAvailable = lecturer.availability == "Available";
+    // --- STATUS LOGIC ---
+    String status = lecturer.availability ?? "Busy";
+    Color badgeColor = status == "Available" 
+        ? const Color(0xFF10B981) 
+        : (status.contains("Lecture") ? Colors.orange : Colors.grey);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -54,26 +58,22 @@ class FilteredLecturerListScreen extends StatelessWidget {
         contentPadding: const EdgeInsets.all(16),
         leading: CircleAvatar(
           radius: 25,
-          backgroundColor: const Color(0xFF10B981).withOpacity(0.1),
-          child: Text(lecturer.name[0].toUpperCase(), style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
+          backgroundColor: badgeColor.withOpacity(0.1),
+          child: Text(
+            lecturer.name[0].toUpperCase(), 
+            style: TextStyle(color: badgeColor, fontWeight: FontWeight.bold)
+          ),
         ),
         title: Row(
           children: [
             Expanded(child: Text(lecturer.name, style: const TextStyle(fontWeight: FontWeight.bold))),
-            // --- NEW AVAILABILITY BADGE ---
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: isAvailable ? Colors.green.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                isAvailable ? "Available" : "Busy",
-                style: TextStyle(
-                  color: isAvailable ? Colors.green : Colors.grey.shade600,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
+            // --- UPDATED DYNAMIC TEXT ---
+            Text(
+              status.contains("Lecture") ? "In Class" : status,
+              style: TextStyle(
+                color: badgeColor, 
+                fontSize: 11, 
+                fontWeight: FontWeight.w600
               ),
             ),
           ],

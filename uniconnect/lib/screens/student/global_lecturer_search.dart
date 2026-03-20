@@ -100,7 +100,20 @@ class _GlobalLecturerSearchState extends State<GlobalLecturerSearch> {
   }
 
   Widget _buildLecturerCard(LecturerModel lecturer) {
-    bool isAvailable = lecturer.availability == "Available";
+    // --- STATUS LOGIC ---
+    String status = lecturer.availability ?? "Busy";
+    Color badgeColor = Colors.grey;
+    IconData statusIcon = Icons.do_not_disturb_on;
+    String displayStatus = status;
+
+    if (status == "Available") {
+      badgeColor = primaryGreen;
+      statusIcon = Icons.check_circle;
+    } else if (status.contains("Lecture")) {
+      badgeColor = Colors.orange; // Orange for lectures
+      statusIcon = Icons.school;
+      displayStatus = "In Lecture";
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -113,26 +126,36 @@ class _GlobalLecturerSearchState extends State<GlobalLecturerSearch> {
         contentPadding: const EdgeInsets.all(16),
         leading: CircleAvatar(
           radius: 28,
-          backgroundColor: primaryGreen.withOpacity(0.1),
-          child: Text(lecturer.name[0].toUpperCase(), style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold, fontSize: 20)),
+          backgroundColor: badgeColor.withOpacity(0.1),
+          child: Text(
+            lecturer.name[0].toUpperCase(), 
+            style: TextStyle(color: badgeColor, fontWeight: FontWeight.bold, fontSize: 20)
+          ),
         ),
         title: Row(
           children: [
             Expanded(child: Text(lecturer.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
-            // --- NEW AVAILABILITY BADGE ---
+            // --- UPDATED DYNAMIC BADGE ---
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: isAvailable ? Colors.green.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
+                color: badgeColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(
-                isAvailable ? "Available" : "Busy",
-                style: TextStyle(
-                  color: isAvailable ? Colors.green : Colors.grey.shade600,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(statusIcon, size: 12, color: badgeColor),
+                  const SizedBox(width: 4),
+                  Text(
+                    displayStatus,
+                    style: TextStyle(
+                      color: badgeColor,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

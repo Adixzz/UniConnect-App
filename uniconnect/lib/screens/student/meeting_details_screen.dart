@@ -40,7 +40,25 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
     _fetchAvailableSlots();
   }
 
-  // --- IMPROVED LOGIC: FIX DATE PARSING & RANGE ---
+  // --- TIME PARSER HELPER ---
+  // Converts strings like "9.00 AM" into actual DateTime objects for comparison
+  DateTime _parseSlotTime(String timeStr, DateTime dateContext) {
+    try {
+      final parts = timeStr.trim().split(" "); // e.g., ["9.00", "AM"]
+      final hm = parts[0].split("."); // e.g., ["9", "00"]
+      int hour = int.parse(hm[0]);
+      int min = int.parse(hm[1]);
+      
+      if (parts[1].toUpperCase() == "PM" && hour != 12) hour += 12;
+      if (parts[1].toUpperCase() == "AM" && hour == 12) hour = 0;
+      
+      return DateTime(dateContext.year, dateContext.month, dateContext.day, hour, min);
+    } catch (e) {
+      return dateContext; // Fallback
+    }
+  }
+
+  // --- MAIN FETCH & FILTER LOGIC ---
   Future<void> _fetchAvailableSlots() async {
     try {
       final response = await http.get(Uri.parse(sheetUrl));
@@ -55,8 +73,8 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
         List<Map<String, dynamic>> fetchedSlots = [];
         Set<String> dateSet = {};
         
-        // Use 2026 context as provided
-        DateTime now = DateTime(2026, 3, 20); // Setting context to Today (Mar 20, 2026)
+        // --- REAL-TIME CONTEXT ---
+        DateTime now = DateTime.now(); // Current device time
         DateTime todayMidnight = DateTime(now.year, now.month, now.day);
         DateTime rangeLimit = todayMidnight.add(const Duration(days: 5));
 
@@ -74,34 +92,45 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
         for (int i = 1; i < sheet.length; i++) {
           List<String> row = sheet[i];
           if (row.length < 2) continue;
-          String start = row[0].trim();
-          String end = row[1].trim();
+          
+          String startStr = row[0].trim(); // e.g., "9.00 AM"
+          String endStr = row[1].trim();
 
           for (int j = 2; j < dates.length; j++) {
             String dateString = dates[j].trim();
             if (dateString.isEmpty || weekendColumnIndices.contains(j)) continue;
 
             try {
-              // FIX: Robustly add a space between letters and numbers (Mar20 -> Mar 20)
+              // Robustly add a space between letters and numbers (Mar20 -> Mar 20)
               String cleanDate = dateString.replaceAllMapped(
                 RegExp(r'([a-zA-Z]+)(\d+)'), 
                 (match) => '${match.group(1)} ${match.group(2)}'
               );
               
               DateTime parsedDate = DateFormat("MMM d").parse(cleanDate);
-              DateTime fullDate = DateTime(2026, parsedDate.month, parsedDate.day);
+              // Set the year context to current year
+              DateTime fullDate = DateTime(now.year, parsedDate.month, parsedDate.day);
               
               // Include today and the next 5 days
               if (fullDate.isAtSameMomentAs(todayMidnight) || 
                  (fullDate.isAfter(todayMidnight) && fullDate.isBefore(rangeLimit.add(const Duration(seconds: 1))))) {
                 
                 String cellValue = (j < row.length) ? row[j].trim() : "";
+                
+                // Only process if the cell is free
                 if (cellValue.isEmpty) {
-                  fetchedSlots.add({
-                    "date": dateString,
-                    "time": "$start - $end",
-                  });
-                  dateSet.add(dateString);
+                  // --- PAST TIME FILTER ---
+                  // Calculate the exact start time of this slot
+                  DateTime slotStartTime = _parseSlotTime(startStr, fullDate);
+
+                  // Only add the slot if it happens in the future relative to "now"
+                  if (slotStartTime.isAfter(now)) {
+                    fetchedSlots.add({
+                      "date": dateString,
+                      "time": "$startStr - $endStr",
+                    });
+                    dateSet.add(dateString);
+                  }
                 }
               }
             } catch (e) {
@@ -193,8 +222,8 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
       return const Text("No dates available this week.", style: TextStyle(color: Colors.red));
     }
 
-    // Get today's marker string for the label
-    String todayMarker = DateFormat("MMM d").format(DateTime(2026, 3, 20)).replaceAll(' ', '');
+    // Get today's marker string for the label dynamically
+    String todayMarker = DateFormat("MMM d").format(DateTime.now()).replaceAll(' ', '');
 
     return SizedBox(
       height: 45,
