@@ -35,15 +35,14 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     _fetchSpreadsheetSlots();
   }
 
-  // Converts spreadsheet times like "9.00 AM" into comparable DateTime objects
   DateTime _parseTime(String timeStr, DateTime contextDate) {
     try {
       final parts = timeStr.trim().split(" ");
       final hm = parts[0].split(".");
       int hour = int.parse(hm[0]);
       int min = int.parse(hm[1]);
-      if (parts[1] == "PM" && hour != 12) hour += 12;
-      if (parts[1] == "AM" && hour == 12) hour = 0;
+      if (parts[1].toUpperCase() == "PM" && hour != 12) hour += 12;
+      if (parts[1].toUpperCase() == "AM" && hour == 12) hour = 0;
       return DateTime(contextDate.year, contextDate.month, contextDate.day, hour, min);
     } catch (e) {
       return DateTime(contextDate.year, contextDate.month, contextDate.day, 0, 0);
@@ -53,10 +52,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
   void _loadCurrentStatus() async {
     try {
       final doc = await _dbService.getUserData(widget.currentLecturer.uid);
-      
-      // SAFETY CHECK: Ensure the screen is still active before updating UI
       if (!mounted) return;
-
       if (doc.exists && doc.data() != null) {
         final data = doc.data() as Map<String, dynamic>;
         setState(() {
@@ -83,20 +79,16 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
   }
 
   Future<void> _fetchSpreadsheetSlots() async {
-    // SAFETY CHECK: Ensure widget is mounted before setting loading state
     if (!mounted) return;
     setState(() => _isLoadingSlots = true);
     
     try {
       final response = await http.get(Uri.parse(exportUrl));
-      
-      // SAFETY CHECK: Stop processing if user navigated away during the HTTP request
       if (!mounted) return;
 
       if (response.statusCode == 200) {
         final data = response.body;
         List<List<String>> sheet = data.split("\n").map((row) => row.split(",")).toList();
-        
         if (sheet.isEmpty || sheet[0].length < 2) return;
 
         List<String> dates = sheet[0]; 
@@ -106,38 +98,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
         DateTime now = DateTime.now();
         DateTime todayMidnight = DateTime(now.year, now.month, now.day);
 
-        // --- A. DETECT IF IN LECTURE RIGHT NOW ---
-        String todayStr = DateFormat("MMM d").format(now).replaceAll(' ', '');
-        int todayCol = -1;
-        for (int j = 0; j < dates.length; j++) {
-          if (dates[j].trim().replaceAll(' ', '') == todayStr) {
-            todayCol = j;
-            break;
-          }
-        }
-
-        bool currentlyInLecture = false;
-        String lectureName = "";
-
-        if (todayCol != -1) {
-          for (int i = 1; i < sheet.length; i++) {
-            List<String> row = sheet[i];
-            if (row.length < 2) continue;
-            DateTime start = _parseTime(row[0], now);
-            DateTime end = _parseTime(row[1], now);
-            
-            if (now.isAfter(start.subtract(const Duration(seconds: 1))) && now.isBefore(end)) {
-              String content = (todayCol < row.length) ? row[todayCol].trim() : "";
-              if (content.isNotEmpty && !content.toUpperCase().contains("WEEKEND")) {
-                currentlyInLecture = true;
-                lectureName = content;
-              }
-              break;
-            }
-          }
-        }
-
-        // --- B. WEEKEND SCANNER ---
+        // --- 1. WEEKEND SCANNER ---
         Set<int> weekendColumnIndices = {};
         for (var row in sheet) {
           for (int j = 0; j < row.length; j++) {
@@ -147,7 +108,39 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
           }
         }
 
-        // --- C. PARSE UPCOMING SLOTS ---
+        // --- 2. DETECT AUTO-STATUS (LECTURE OR WEEKEND) ---
+        String todayStr = DateFormat("MMM d").format(now).replaceAll(' ', '');
+        int todayCol = -1;
+        for (int j = 0; j < dates.length; j++) {
+          if (dates[j].trim().replaceAll(' ', '') == todayStr) {
+            todayCol = j;
+            break;
+          }
+        }
+
+        bool isWeekend = (todayCol != -1 && weekendColumnIndices.contains(todayCol));
+        bool currentlyInLecture = false;
+        String lectureName = "";
+
+        if (!isWeekend && todayCol != -1) {
+          for (int i = 1; i < sheet.length; i++) {
+            List<String> row = sheet[i];
+            if (row.length < 2) continue;
+            DateTime start = _parseTime(row[0], now);
+            DateTime end = _parseTime(row[1], now);
+            
+            if (now.isAfter(start.subtract(const Duration(seconds: 1))) && now.isBefore(end)) {
+              String content = (todayCol < row.length) ? row[todayCol].trim() : "";
+              if (content.isNotEmpty) {
+                currentlyInLecture = true;
+                lectureName = content;
+              }
+              break;
+            }
+          }
+        }
+
+        // --- 3. PARSE UPCOMING FREE SLOTS ---
         for (int i = 1; i < sheet.length; i++) {
           List<String> row = sheet[i];
           if (row.length < 2) continue;
@@ -160,7 +153,10 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
 
             bool isPastDay = false;
             try {
-              String cleanDate = dateString.replaceAll(RegExp(r'[^a-zA-Z0-9]'), ' ');
+              String cleanDate = dateString.replaceAllMapped(
+                RegExp(r'([a-zA-Z]+)(\d+)'), 
+                (match) => '${match.group(1)} ${match.group(2)}'
+              );
               DateTime parsedDate = DateFormat("MMM d").parse(cleanDate);
               DateTime fullDate = DateTime(now.year, parsedDate.month, parsedDate.day);
               if (fullDate.isBefore(todayMidnight)) isPastDay = true;
@@ -176,15 +172,18 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
           }
         }
 
-        // SAFETY CHECK: Update state only if screen is still visible
         if (mounted) {
           setState(() {
             availableSlots = fetchedSlots;
             uniqueDates = dateSet.toList()..sort();
             _isLoadingSlots = false;
-            _isAutoLocked = currentlyInLecture;
+            _isAutoLocked = isWeekend || currentlyInLecture;
 
-            if (_isAutoLocked) {
+            if (isWeekend) {
+              _currentStatus = "Not Available (Weekend)";
+              _isAvailable = false;
+              _updateFirestoreAvailability(_currentStatus);
+            } else if (currentlyInLecture) {
               _currentStatus = "In a Lecture ($lectureName)";
               _isAvailable = false;
               _updateFirestoreAvailability(_currentStatus);
@@ -196,10 +195,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
       }
     } catch (e) {
       debugPrint("Sync Error: $e");
-      // SAFETY CHECK: Reset loading state gracefully on error
-      if (mounted) {
-        setState(() => _isLoadingSlots = false);
-      }
+      if (mounted) setState(() => _isLoadingSlots = false);
     }
   }
 
@@ -219,27 +215,21 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
 
   void _toggleStatus(bool value) async {
     if (_isAutoLocked) return;
-    
     String newStatus = value ? "Available" : "Not Available";
-    
-    // SAFETY CHECK: Update local toggle UI
     if (mounted) {
       setState(() {
         _isAvailable = value;
         _currentStatus = newStatus;
       });
     }
-    
     _updateFirestoreAvailability(newStatus);
   }
 
   Future<void> _openSpreadsheet() async {
-    if (!await launchUrl(editUrl)) {
-      throw Exception('Could not launch $editUrl');
-    }
+    if (!await launchUrl(editUrl)) throw Exception('Could not launch $editUrl');
   }
 
- @override
+  @override
   Widget build(BuildContext context) {
     final filteredList = _selectedDate == "All" 
         ? availableSlots 
@@ -252,7 +242,6 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
-        // --- REMOVED leading icon and disabled auto back button ---
         automaticallyImplyLeading: false, 
         actions: [
           TextButton(
@@ -291,7 +280,6 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
         itemBuilder: (context, index) {
           String dateLabel = uniqueDates[index];
           bool isSelected = _selectedDate == dateLabel;
-
           return Padding(
             padding: const EdgeInsets.only(right: 8),
             child: FilterChip(
@@ -333,7 +321,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
             radius: 25,
             backgroundColor: _isAutoLocked ? Colors.orange.shade50 : (_isAvailable ? Colors.green.shade50 : Colors.red.shade50),
             child: Icon(
-              _isAutoLocked ? Icons.school : (_isAvailable ? Icons.check_circle : Icons.do_not_disturb_on), 
+              _isAutoLocked ? Icons.lock : (_isAvailable ? Icons.check_circle : Icons.do_not_disturb_on), 
               color: _isAutoLocked ? Colors.orange : (_isAvailable ? Colors.green : Colors.red)
             ),
           ),
@@ -345,7 +333,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
                 Text(_isAutoLocked ? "Auto-Status (Locked)" : "Global Visibility", style: const TextStyle(color: Colors.grey, fontSize: 12)),
                 Text(_currentStatus, 
                   style: TextStyle(
-                    fontSize: 16, 
+                    fontSize: 15, 
                     fontWeight: FontWeight.bold, 
                     color: _isAutoLocked ? Colors.orange : (_isAvailable ? Colors.green : Colors.red)
                   )
@@ -389,10 +377,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
   }
 
   Widget _buildGroupedSlotList(List<Map<String, dynamic>> slots) {
-    if (slots.isEmpty) {
-      return const Center(child: Text("No upcoming free slots found."));
-    }
-
+    if (slots.isEmpty) return const Center(child: Text("No upcoming free slots found."));
     return ListView.builder(
       padding: const EdgeInsets.all(20),
       itemCount: slots.length,
@@ -401,10 +386,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
         return Card(
           elevation: 0,
           margin: const EdgeInsets.only(bottom: 8),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: Colors.grey.shade200),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
           child: ListTile(
             leading: const Icon(Icons.access_time_filled, color: Colors.blue, size: 20),
             title: Text(slot['time'], style: const TextStyle(fontWeight: FontWeight.bold)),
