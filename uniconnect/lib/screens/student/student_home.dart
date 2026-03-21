@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import '../../services/database_service.dart';
-import '../../models/meeting_models.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -14,29 +14,30 @@ class StudentHomeScreen extends StatefulWidget {
 class _StudentHomeScreenState extends State<StudentHomeScreen> {
   final String currentUid = FirebaseAuth.instance.currentUser?.uid ?? "";
   final DatabaseService _dbService = DatabaseService();
-@override
-Widget build(BuildContext context) {
-  return Scaffold(
-    backgroundColor: const Color(0xFFF8F9FD),
-    body: SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(),
-            const SizedBox(height: 32),
-            _buildStatsRow(),
-            const SizedBox(height: 32),
-            _buildUpcomingSection(),
-            const SizedBox(height: 32), // Spacing for new section
-            _buildPendingSection(),     // NEW SECTION
-          ],
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FD),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(),
+              const SizedBox(height: 32),
+              _buildStatsRow(),
+              const SizedBox(height: 32),
+              _buildUpcomingSection(),
+              const SizedBox(height: 32),
+              _buildPendingSection(),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   // 1. DYNAMIC GREETING
   Widget _buildHeader() {
@@ -64,7 +65,6 @@ Widget build(BuildContext context) {
   Widget _buildStatsRow() {
     return Row(
       children: [
-        // Live Meeting Count
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
             stream: _dbService.getStudentMeetings(currentUid),
@@ -75,7 +75,6 @@ Widget build(BuildContext context) {
           ),
         ),
         const SizedBox(width: 16),
-        // Club Count
         Expanded(
           child: FutureBuilder<List>(
             future: _dbService.getClubs(),
@@ -89,125 +88,182 @@ Widget build(BuildContext context) {
     );
   }
 
-Widget _buildUpcomingSection() {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text("Upcoming Meetings",
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-      const SizedBox(height: 16),
-      StreamBuilder<QuerySnapshot>(
-        stream: _dbService.getStudentMeetings(currentUid),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Text("No upcoming meetings scheduled.");
-          }
+  // 3. UPCOMING MEETINGS SECTION
+  Widget _buildUpcomingSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Upcoming Meetings",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 16),
+        StreamBuilder<QuerySnapshot>(
+          stream: _dbService.getStudentMeetings(currentUid),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) return const SizedBox();
 
-          final now = DateTime.now();
+            final now = DateTime.now();
+            final filteredDocs = snapshot.data!.docs.where((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              final String status = data['status'] ?? '';
+              if (status != 'Accepted' && status != 'Confirmed') return false;
+              try {
+                DateTime meetingEndTime = _parseEndDateTime(data['date'], data['time']);
+                return meetingEndTime.isAfter(now);
+              } catch (e) { return true; }
+            }).toList();
 
-          // Filter logic
-          final filteredDocs = snapshot.data!.docs.where((doc) {
-            final data = doc.data() as Map<String, dynamic>;
-            final String status = data['status'] ?? '';
-            
-            // 1. Only show 'Accepted' or 'Confirmed'
-            if (status != 'Accepted' && status != 'Confirmed') return false;
-
-            // 2. Filter out meetings passed by more than 30 minutes
-            try {
-              DateTime meetingDateTime = _parseDateTime(data['date'], data['time']);
-              // Keep meeting if: meetingTime > (now - 30 minutes)
-              return meetingDateTime.isAfter(now.subtract(const Duration(minutes: 30)));
-            } catch (e) {
-              return true; // Keep it if parsing fails to avoid missing meetings
+            // Display Empty State if no meetings
+            if (filteredDocs.isEmpty) {
+              return _buildEmptyState(
+                icon: Icons.event_available_outlined,
+                message: "No upcoming meetings scheduled.",
+              );
             }
-          }).toList();
 
-          if (filteredDocs.isEmpty) {
-            return const Text("No recently accepted meetings.");
-          }
+            filteredDocs.sort((a, b) {
+              final aData = a.data() as Map<String, dynamic>;
+              final bData = b.data() as Map<String, dynamic>;
+              return _parseEndDateTime(aData['date'], aData['time'])
+                  .compareTo(_parseEndDateTime(bData['date'], bData['time']));
+            });
 
-          // Show the top 3 relevant meetings
-          var docsToShow = filteredDocs.take(3).toList();
+            return Column(
+              children: filteredDocs.take(3).map((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                return _upcomingMeetingTile(
+                  data['lecturerName'] ?? "Lecturer",
+                  "${data['date']} at ${data['time']}",
+                  data['status'] ?? "Accepted",
+                );
+              }).toList(),
+            );
+          },
+        ),
+      ],
+    );
+  }
 
-          return Column(
-            children: docsToShow.map((doc) {
+  // 4. PENDING REQUESTS SECTION
+  Widget _buildPendingSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Pending Requests",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 16),
+        StreamBuilder<QuerySnapshot>(
+          stream: _dbService.getStudentMeetings(currentUid),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) return const SizedBox();
+
+            final pendingDocs = snapshot.data!.docs.where((doc) {
               final data = doc.data() as Map<String, dynamic>;
-              return _upcomingMeetingTile(
-                data['lecturerName'] ?? "Lecturer",
-                "${data['date']} at ${data['time']}",
-                data['status'] ?? "Accepted",
+              return data['status'] == 'Pending';
+            }).toList();
+
+            // Display Empty State if no requests
+            if (pendingDocs.isEmpty) {
+              return _buildEmptyState(
+                icon: Icons.hourglass_empty_rounded,
+                message: "No pending requests at the moment.",
               );
-            }).toList(),
-          );
-        },
+            }
+
+            return Column(
+              children: pendingDocs.take(2).map((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                return _upcomingMeetingTile(
+                  data['lecturerName'] ?? "Lecturer",
+                  "${data['date']} at ${data['time']}",
+                  "Pending",
+                );
+              }).toList(),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  // --- NEW: POLISHED EMPTY STATE WIDGET ---
+  Widget _buildEmptyState({required IconData icon, required String message}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade100),
       ),
-    ],
-  );
-}
-
-// 2. ADD THIS NEW PENDING SECTION METHOD
-Widget _buildPendingSection() {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text("Pending Requests",
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-      const SizedBox(height: 16),
-      StreamBuilder<QuerySnapshot>(
-        stream: _dbService.getStudentMeetings(currentUid),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Text("No pending requests.");
-          }
-
-          // Filter specifically for 'Pending' status
-          final pendingDocs = snapshot.data!.docs.where((doc) {
-            final data = doc.data() as Map<String, dynamic>;
-            return data['status'] == 'Pending';
-          }).toList();
-
-          if (pendingDocs.isEmpty) {
-            return const Text("No pending requests at the moment.");
-          }
-
-          // Show top 2 pending requests to keep dashboard clean
-          var docsToShow = pendingDocs.take(2).toList();
-
-          return Column(
-            children: docsToShow.map((doc) {
-              final data = doc.data() as Map<String, dynamic>;
-              return _upcomingMeetingTile(
-                data['lecturerName'] ?? "Lecturer",
-                "${data['date']} at ${data['time']}",
-                "Pending", // Hardcoded label for this section
-              );
-            }).toList(),
-          );
-        },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 48, color: Colors.grey.shade300),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            "Use the Meetings tab to request a new meeting.",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey.shade400,
+            ),
+          ),
+        ],
       ),
-    ],
-  );
-}
+    );
+  }
 
-// HELPER TO CONVERT STRING DATE/TIME TO DATETIME OBJECT
-DateTime _parseDateTime(String dateStr, String timeStr) {
-  // Assuming date format is "d/M/yyyy" (e.g. 18/3/2026)
-  List<String> dateParts = dateStr.split('/');
-  int day = int.parse(dateParts[0]);
-  int month = int.parse(dateParts[1]);
-  int year = int.parse(dateParts[2]);
+  // --- REWRITTEN: ROBUST DATE/TIME PARSING ---
+  DateTime _parseEndDateTime(String dateStr, String timeRange) {
+    try {
+      int year = 2026; 
+      int month = DateTime.now().month;
+      int day = DateTime.now().day;
 
-  // Parsing Time (e.g. "9:15 PM" or "11:10 PM")
-  int hour = int.parse(timeStr.split(':')[0]);
-  int minute = int.parse(timeStr.split(':')[1].split(' ')[0]);
-  String period = timeStr.split(' ')[1]; // AM or PM
+      if (dateStr.contains('/')) {
+        List<String> dateParts = dateStr.split('/');
+        day = int.parse(dateParts[0]);
+        month = int.parse(dateParts[1]);
+        year = int.parse(dateParts[2]);
+        if (year < 100) year += 2000;
+      } else {
+        String cleanDate = dateStr.replaceAllMapped(
+          RegExp(r'([a-zA-Z]+)(\d+)'), 
+          (match) => '${match.group(1)} ${match.group(2)}'
+        ).trim();
+        DateTime parsed = DateFormat("MMM d").parse(cleanDate);
+        month = parsed.month;
+        day = parsed.day;
+      }
 
-  if (period == 'PM' && hour != 12) hour += 12;
-  if (period == 'AM' && hour == 12) hour = 0;
+      String timeToParse = timeRange.contains('-') 
+          ? timeRange.split('-')[1].trim() 
+          : timeRange.trim();
 
-  return DateTime(year, month, day, hour, minute);
-}
+      timeToParse = timeToParse.replaceAll('.', ':');
+      final parts = timeToParse.split(" ");
+      final hm = parts[0].split(":");
+      int hour = int.parse(hm[0]);
+      int min = int.parse(hm[1]);
+      
+      if (parts[1].toUpperCase() == 'PM' && hour != 12) hour += 12;
+      if (parts[1].toUpperCase() == 'AM' && hour == 12) hour = 0;
+
+      return DateTime(year, month, day, hour, min);
+    } catch (e) {
+      return DateTime(2000, 1, 1);
+    }
+  }
 
   Widget _statCard(String label, String value, IconData icon, Color color) {
     return Container(
@@ -241,7 +297,11 @@ DateTime _parseDateTime(String dateStr, String timeStr) {
       ),
       child: Row(
         children: [
-          const CircleAvatar(child: Icon(Icons.person)),
+          CircleAvatar(
+            backgroundColor: (status == 'Accepted' ? Colors.green : Colors.orange).withOpacity(0.1),
+            child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?', 
+              style: TextStyle(color: status == 'Accepted' ? Colors.green : Colors.orange, fontWeight: FontWeight.bold)),
+          ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -258,7 +318,13 @@ DateTime _parseDateTime(String dateStr, String timeStr) {
               color: status == 'Accepted' ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Text(status, style: TextStyle(color: status == 'Accepted' ? Colors.green : Colors.orange, fontSize: 10, fontWeight: FontWeight.bold)),
+            child: Text(status, 
+              style: TextStyle(
+                color: status == 'Accepted' ? Colors.green : Colors.orange, 
+                fontSize: 10, 
+                fontWeight: FontWeight.bold
+              )
+            ),
           ),
         ],
       ),

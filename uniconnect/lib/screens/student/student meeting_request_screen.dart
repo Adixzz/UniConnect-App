@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import '../../models/meeting_models.dart';
 import '../../widgets/meeting_cards.dart';
 import '../../services/database_service.dart';
@@ -23,7 +24,6 @@ class MeetingsScreen extends StatefulWidget {
 }
 
 class _MeetingsScreenState extends State<MeetingsScreen> {
-  // Use enum to track 3 states now
   MeetingTab selectedTab = MeetingTab.upcoming;
 
   final Color primaryGreen = const Color(0xFF10B981);
@@ -50,7 +50,6 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
               ),
               const SizedBox(height: 24),
 
-              // New 3-Tab Toggle
               _buildTabToggle(),
 
               const SizedBox(height: 24),
@@ -61,9 +60,7 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFF10B981),
-                        ),
+                        child: CircularProgressIndicator(color: Color(0xFF10B981)),
                       );
                     }
 
@@ -71,67 +68,65 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
                       return _buildEmptyState();
                     }
 
-                    final List<MeetingDataContainer>
-                    allMeetings = snapshot.data!.docs.map((doc) {
+                    final now = DateTime.now();
+
+                    final List<MeetingDataContainer> allMeetings = snapshot.data!.docs.map((doc) {
                       final data = doc.data() as Map<String, dynamic>;
-                      final String status =
-                          data['status'] ?? "Pending"; // Capture status first
+                      final String status = data['status'] ?? "Pending";
+                      final String dateStr = data['date'] ?? "";
+                      final String timeStr = data['time'] ?? "";
+
+                      // Determine if the meeting has passed
+                      DateTime meetingEndTime = _parseEndDateTime(dateStr, timeStr);
+                      bool isExpired = now.isAfter(meetingEndTime);
 
                       return MeetingDataContainer(
                         id: doc.id,
                         meeting: Meeting(
-                          initials: (data['lecturerName'] ?? "U")[0]
-                              .toUpperCase(),
+                          initials: (data['lecturerName'] ?? "U")[0].toUpperCase(),
                           name: data['lecturerName'] ?? "Unknown",
                           subject: data['moduleName'] ?? "General",
-                          date: data['date'] ?? "",
-                          time: data['time'] ?? "",
-                          // Use the dynamic location from the database we set up!
+                          date: dateStr,
+                          time: timeStr,
                           location: data['location'] ?? "Consultation Room",
                           status: status,
-                          // ONLY show the button if it's Pending or Accepted
-                          showCancelButton:
-                              status == 'Pending' ||
-                              status == 'Accepted' ||
-                              status == 'Confirmed',
+                          // --- UPDATED LOGIC: Only show cancel if status is active AND meeting hasn't passed ---
+                          showCancelButton: (status == 'Pending' || 
+                                             status == 'Accepted' || 
+                                             status == 'Confirmed') && 
+                                             !isExpired,
                         ),
                       );
                     }).toList();
 
-                    final now = DateTime.now();
-
-                    // --- ENHANCED FILTERING FOR 3 TABS ---
+                    // --- ROBUST FILTERING LOGIC ---
                     final filteredData = allMeetings.where((container) {
                       final m = container.meeting;
-                      DateTime meetingTime = _parseDateTime(m.date, m.time);
-                      bool isExpired = now.isAfter(
-                        meetingTime.add(const Duration(minutes: 30)),
-                      );
+                      DateTime meetingEndTime = _parseEndDateTime(m.date, m.time);
+                      bool isPast = now.isAfter(meetingEndTime);
 
                       if (selectedTab == MeetingTab.upcoming) {
-                        // Confirmed/Accepted only + Not Expired
-                        return (m.status == 'Accepted' ||
-                                m.status == 'Confirmed') &&
-                            !isExpired;
+                        return (m.status == 'Accepted' || m.status == 'Confirmed') && !isPast;
                       } else if (selectedTab == MeetingTab.pending) {
-                        // Pending only + Not Expired
-                        return m.status == 'Pending' && !isExpired;
+                        return m.status == 'Pending' && !isPast;
                       } else {
-                        // Past: Anything Finished OR anything Expired
-                        bool isFinished =
-                            (m.status == 'Completed' ||
-                            m.status == 'Cancelled' ||
-                            m.status == 'Declined');
-                        return isFinished || isExpired;
+                        bool isFinishedStatus = (m.status == 'Completed' || m.status == 'Cancelled' || m.status == 'Declined');
+                        return isFinishedStatus || isPast;
                       }
                     }).toList();
+
+                    // Sort: Upcoming/Pending show soonest first; Past shows most recent first
+                    filteredData.sort((a, b) {
+                      DateTime aTime = _parseEndDateTime(a.meeting.date, a.meeting.time);
+                      DateTime bTime = _parseEndDateTime(b.meeting.date, b.meeting.time);
+                      return selectedTab == MeetingTab.past ? bTime.compareTo(aTime) : aTime.compareTo(bTime);
+                    });
 
                     if (filteredData.isEmpty) return _buildEmptyState();
 
                     return ListView.separated(
                       itemCount: filteredData.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 12),
+                      separatorBuilder: (context, index) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final container = filteredData[index];
                         return MeetingCard(
@@ -140,15 +135,9 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
                             bool? confirm = await _showCancelDialog();
                             if (confirm == true) {
                               final messenger = ScaffoldMessenger.of(context);
-                              await DatabaseService().cancelMeeting(
-                                container.id,
-                              );
+                              await DatabaseService().cancelMeeting(container.id);
                               if (!mounted) return;
-                              messenger.showSnackBar(
-                                const SnackBar(
-                                  content: Text("Meeting cancelled"),
-                                ),
-                              );
+                              messenger.showSnackBar(const SnackBar(content: Text("Meeting cancelled")));
                             }
                           },
                         );
@@ -194,14 +183,7 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
           decoration: BoxDecoration(
             color: isSelected ? Colors.white : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 4,
-                    ),
-                  ]
-                : [],
+            boxShadow: isSelected ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)] : [],
           ),
           child: Text(
             title,
@@ -216,23 +198,40 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
     );
   }
 
-  // --- HELPERS (Keep your existing _parseDateTime, _showCancelDialog, etc.) ---
-  DateTime _parseDateTime(String dateStr, String timeStr) {
+  // --- ROBUST PARSER ---
+  DateTime _parseEndDateTime(String dateStr, String timeRange) {
     try {
-      List<String> dateParts = dateStr.split('/');
-      int day = int.parse(dateParts[0]);
-      int month = int.parse(dateParts[1]);
-      int year = int.parse(dateParts[2]);
-      List<String> timeParts = timeStr.split(' ');
-      String timeOnly = timeParts[0];
-      String period = timeParts[1];
-      int hour = int.parse(timeOnly.split(':')[0]);
-      int minute = int.parse(timeOnly.split(':')[1]);
-      if (period == 'PM' && hour != 12) hour += 12;
-      if (period == 'AM' && hour == 12) hour = 0;
-      return DateTime(year, month, day, hour, minute);
+      int year = 2026;
+      int month = DateTime.now().month;
+      int day = DateTime.now().day;
+
+      if (dateStr.contains('/')) {
+        List<String> parts = dateStr.split('/');
+        day = int.parse(parts[0]);
+        month = int.parse(parts[1]);
+        year = int.parse(parts[2]);
+        if (year < 100) year += 2000;
+      } else {
+        String clean = dateStr.replaceAllMapped(RegExp(r'([a-zA-Z]+)(\d+)'), (m) => '${m.group(1)} ${m.group(2)}').trim();
+        DateTime parsed = DateFormat("MMM d").parse(clean);
+        month = parsed.month;
+        day = parsed.day;
+      }
+
+      String timeToParse = timeRange.contains('-') ? timeRange.split('-')[1].trim() : timeRange.trim();
+      timeToParse = timeToParse.replaceAll('.', ':');
+      
+      final parts = timeToParse.split(" ");
+      final hm = parts[0].split(":");
+      int hour = int.parse(hm[0]);
+      int min = int.parse(hm[1]);
+      
+      if (parts[1].toUpperCase() == 'PM' && hour != 12) hour += 12;
+      if (parts[1].toUpperCase() == 'AM' && hour == 12) hour = 0;
+
+      return DateTime(year, month, day, hour, min);
     } catch (e) {
-      return DateTime.now();
+      return DateTime(2000, 1, 1);
     }
   }
 
@@ -243,14 +242,8 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
         title: const Text("Cancel Meeting"),
         content: const Text("Are you sure?"),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("No"),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text("Yes"),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("No")),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Yes")),
         ],
       ),
     );
@@ -261,31 +254,16 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
     if (selectedTab == MeetingTab.upcoming) msg = "No confirmed meetings.";
     if (selectedTab == MeetingTab.pending) msg = "No pending requests.";
     if (selectedTab == MeetingTab.past) msg = "No past history.";
-
-    return Center(
-      child: Text(msg, style: const TextStyle(color: Colors.grey)),
-    );
+    return Center(child: Text(msg, style: const TextStyle(color: Colors.grey)));
   }
 
   Widget _buildRequestButton() {
     return SizedBox(
-      width: double.infinity,
-      height: 56,
+      width: double.infinity, height: 56,
       child: ElevatedButton(
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const RequestChoiceScreen()),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: primaryGreen,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        child: const Text(
-          'Request a Meeting',
-          style: TextStyle(color: Colors.white),
-        ),
+        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RequestChoiceScreen())),
+        style: ElevatedButton.styleFrom(backgroundColor: primaryGreen, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+        child: const Text('Request a Meeting', style: TextStyle(color: Colors.white)),
       ),
     );
   }
