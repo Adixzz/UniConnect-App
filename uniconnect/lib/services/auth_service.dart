@@ -110,6 +110,7 @@ class AuthService {
         modules: lecturer.modules,
         role: 'lecturer',
         location: lecturer.location,
+        timetableURL: lecturer.timetableURL,
 
       ));
 

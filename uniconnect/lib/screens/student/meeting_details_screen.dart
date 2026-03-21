@@ -31,8 +31,15 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
   
   bool isLoading = true;
 
-  final String sheetUrl =
-      "https://docs.google.com/spreadsheets/d/1N-8ZbnpqlKt2bsdk4UnBYCKJM6slHK2aHyKNMYaHVQA/export?format=csv";
+  // --- DYNAMIC URL CONVERTER ---
+  // Transforms the lecturer's "edit" URL into a "CSV export" URL
+  String get _dynamicSheetUrl {
+    String baseUrl = widget.lecturer.timetableURL;
+    if (baseUrl.contains('/edit')) {
+      return baseUrl.split('/edit')[0] + '/export?format=csv';
+    }
+    return baseUrl;
+  }
 
   @override
   void initState() {
@@ -41,11 +48,10 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
   }
 
   // --- TIME PARSER HELPER ---
-  // Converts strings like "9.00 AM" into actual DateTime objects for comparison
   DateTime _parseSlotTime(String timeStr, DateTime dateContext) {
     try {
-      final parts = timeStr.trim().split(" "); // e.g., ["9.00", "AM"]
-      final hm = parts[0].split("."); // e.g., ["9", "00"]
+      final parts = timeStr.trim().split(" ");
+      final hm = parts[0].split(".");
       int hour = int.parse(hm[0]);
       int min = int.parse(hm[1]);
       
@@ -54,14 +60,21 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
       
       return DateTime(dateContext.year, dateContext.month, dateContext.day, hour, min);
     } catch (e) {
-      return dateContext; // Fallback
+      return dateContext; 
     }
   }
 
   // --- MAIN FETCH & FILTER LOGIC ---
   Future<void> _fetchAvailableSlots() async {
+    // Safety check: Ensure the lecturer has a URL linked
+    if (widget.lecturer.timetableURL.isEmpty) {
+      if (mounted) setState(() => isLoading = false);
+      return;
+    }
+
     try {
-      final response = await http.get(Uri.parse(sheetUrl));
+      // USES THE DYNAMIC URL FROM THE SELECTED LECTURER
+      final response = await http.get(Uri.parse(_dynamicSheetUrl));
 
       if (response.statusCode == 200) {
         final data = response.body;
@@ -73,12 +86,10 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
         List<Map<String, dynamic>> fetchedSlots = [];
         Set<String> dateSet = {};
         
-        // --- REAL-TIME CONTEXT ---
-        DateTime now = DateTime.now(); // Current device time
+        DateTime now = DateTime.now(); 
         DateTime todayMidnight = DateTime(now.year, now.month, now.day);
         DateTime rangeLimit = todayMidnight.add(const Duration(days: 5));
 
-        // 1. Weekend Scanner (Checks if ANY row in a column says WEEKEND)
         Set<int> weekendColumnIndices = {};
         for (var row in sheet) {
           for (int j = 0; j < row.length; j++) {
@@ -88,12 +99,11 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
           }
         }
 
-        // 2. Parse and filter
         for (int i = 1; i < sheet.length; i++) {
           List<String> row = sheet[i];
           if (row.length < 2) continue;
           
-          String startStr = row[0].trim(); // e.g., "9.00 AM"
+          String startStr = row[0].trim();
           String endStr = row[1].trim();
 
           for (int j = 2; j < dates.length; j++) {
@@ -101,29 +111,22 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
             if (dateString.isEmpty || weekendColumnIndices.contains(j)) continue;
 
             try {
-              // Robustly add a space between letters and numbers (Mar20 -> Mar 20)
               String cleanDate = dateString.replaceAllMapped(
                 RegExp(r'([a-zA-Z]+)(\d+)'), 
                 (match) => '${match.group(1)} ${match.group(2)}'
               );
               
               DateTime parsedDate = DateFormat("MMM d").parse(cleanDate);
-              // Set the year context to current year
               DateTime fullDate = DateTime(now.year, parsedDate.month, parsedDate.day);
               
-              // Include today and the next 5 days
               if (fullDate.isAtSameMomentAs(todayMidnight) || 
                  (fullDate.isAfter(todayMidnight) && fullDate.isBefore(rangeLimit.add(const Duration(seconds: 1))))) {
                 
                 String cellValue = (j < row.length) ? row[j].trim() : "";
                 
-                // Only process if the cell is free
                 if (cellValue.isEmpty) {
-                  // --- PAST TIME FILTER ---
-                  // Calculate the exact start time of this slot
                   DateTime slotStartTime = _parseSlotTime(startStr, fullDate);
 
-                  // Only add the slot if it happens in the future relative to "now"
                   if (slotStartTime.isAfter(now)) {
                     fetchedSlots.add({
                       "date": dateString,
@@ -140,18 +143,17 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
           }
         }
 
-        setState(() {
-          allAvailableSlots = fetchedSlots;
-          uniqueDates = dateSet.toList()..sort((a, b) {
-             // Sorting dates correctly for the chips
-             return a.compareTo(b);
+        if (mounted) {
+          setState(() {
+            allAvailableSlots = fetchedSlots;
+            uniqueDates = dateSet.toList()..sort((a, b) => a.compareTo(b));
+            if (uniqueDates.isNotEmpty) selectedDateChip = uniqueDates[0];
+            isLoading = false;
           });
-          if (uniqueDates.isNotEmpty) selectedDateChip = uniqueDates[0];
-          isLoading = false;
-        });
+        }
       }
     } catch (e) {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -181,9 +183,12 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
             const SizedBox(height: 24),
             const Text("Available Times", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
-            isLoading 
-              ? const Center(child: CircularProgressIndicator(color: Color(0xFF10B981)))
-              : _buildTimeSlotList(filteredSlots),
+            if (widget.lecturer.timetableURL.isEmpty)
+              const Center(child: Text("This lecturer hasn't linked a timetable yet.", style: TextStyle(color: Colors.red)))
+            else
+              isLoading 
+                ? const Center(child: CircularProgressIndicator(color: Color(0xFF10B981)))
+                : _buildTimeSlotList(filteredSlots),
 
             const SizedBox(height: 32),
             const Text("Reason for Meeting", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -217,14 +222,15 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
     );
   }
 
+  // --- REST OF THE UI WIDGETS ---
+  // (Include _buildDateFilterBar, _buildTimeSlotList, _submitMeetingRequest, _buildLecturerSummary, _showSuccessDialog)
+  // These stay largely the same but ensure they reference the correct data.
+
   Widget _buildDateFilterBar() {
     if (uniqueDates.isEmpty) {
-      return const Text("No dates available this week.", style: TextStyle(color: Colors.red));
+      return const Text("No available dates found for this lecturer.", style: TextStyle(color: Colors.grey));
     }
-
-    // Get today's marker string for the label dynamically
     String todayMarker = DateFormat("MMM d").format(DateTime.now()).replaceAll(' ', '');
-
     return SizedBox(
       height: 45,
       child: ListView.builder(
@@ -234,27 +240,17 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
           String date = uniqueDates[index];
           bool isSelected = selectedDateChip == date;
           bool isToday = date.replaceAll(' ', '') == todayMarker;
-
           return Padding(
             padding: const EdgeInsets.only(right: 8),
             child: FilterChip(
               label: Text(isToday ? "Today ($date)" : date),
               selected: isSelected,
-              onSelected: (val) => setState(() { 
-                selectedDateChip = date; 
-                selectedSlot = null; 
-              }),
+              onSelected: (val) => setState(() { selectedDateChip = date; selectedSlot = null; }),
               selectedColor: primaryGreen.withOpacity(0.2),
               checkmarkColor: primaryGreen,
-              labelStyle: TextStyle(
-                color: isSelected ? primaryGreen : Colors.black87, 
-                fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.normal
-              ),
+              labelStyle: TextStyle(color: isSelected ? primaryGreen : Colors.black87, fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.normal),
               backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20), 
-                side: BorderSide(color: isSelected ? primaryGreen : Colors.grey.shade300)
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: isSelected ? primaryGreen : Colors.grey.shade300)),
             ),
           );
         },
@@ -263,7 +259,7 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
   }
 
   Widget _buildTimeSlotList(List<Map<String, dynamic>> slots) {
-    if (slots.isEmpty) return const Text("No available times for this day.");
+    if (slots.isEmpty && !isLoading) return const Text("No available times for this day.");
     return Column(
       children: slots.map((slot) {
         bool isSelected = selectedSlot == slot;
@@ -272,11 +268,7 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
           child: Container(
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isSelected ? primaryGreen : Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: isSelected ? primaryGreen : Colors.grey.shade200),
-            ),
+            decoration: BoxDecoration(color: isSelected ? primaryGreen : Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: isSelected ? primaryGreen : Colors.grey.shade200)),
             child: Row(
               children: [
                 Icon(Icons.access_time, color: isSelected ? Colors.white : primaryGreen, size: 20),
@@ -300,7 +292,7 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
         studentUid: currentUser.uid,
         lecturerUid: widget.lecturer.uid,
         lecturerName: widget.lecturer.name,
-        moduleName: widget.selectedModuleName ?? "No specific module selected",
+        moduleName: widget.selectedModuleName ?? "General Consultation",
         date: selectedSlot!['date'],
         time: selectedSlot!['time'],
         reason: _reasonController.text,

@@ -9,6 +9,7 @@ class LecturerModel {
   final String availability;
   final String role;
   final String location;
+  final String timetableURL;
 
   LecturerModel({
     required this.uid,
@@ -21,7 +22,7 @@ class LecturerModel {
     this.availability = 'Not in Lecture',
     this.role = 'lecturer',
     required this.location,
-  
+    required this.timetableURL,
   });
 
   Map<String, dynamic> toMap() {
@@ -37,21 +38,23 @@ class LecturerModel {
       'role': role,
       'location': location,
       'createdAt': DateTime.now().toIso8601String(),
+      'timetableURL': timetableURL,
     };
   }
 
   factory LecturerModel.fromMap(Map<String, dynamic> map) {
-  return LecturerModel(
-    uid: map['uid'] ?? '',
-    name: map['name'] ?? '',
-    email: map['email'] ?? '',
-    staffId: map['staffId'] ?? '',
-    pin: map['pin'] ?? '',
-    faculty: map['faculty'] ?? '',
-    modules: List<String>.from(map['modules'] ?? []),
-    availability: map['availability'] ?? 'Not in Lecture',
-    role: map['role'] ?? 'lecturer',
-    location: map['location'] ?? 'Not Specified', // Maps from Firestore
-  );
-}
+    return LecturerModel(
+      uid: map['uid'] ?? '',
+      name: map['name'] ?? '',
+      email: map['email'] ?? '',
+      staffId: map['staffId'] ?? '',
+      pin: map['pin'] ?? '',
+      faculty: map['faculty'] ?? '',
+      modules: List<String>.from(map['modules'] ?? []),
+      availability: map['availability'] ?? 'Not in Lecture',
+      role: map['role'] ?? 'lecturer',
+      location: map['location'] ?? 'Not Specified', // Maps from Firestore
+      timetableURL: map['timetableURL'] ?? '',
+    );
+  }
 }

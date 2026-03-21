@@ -11,10 +11,19 @@ class FilteredLecturerListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // --- STANDARDIZATION HELPER ---
+    // This ensures that "FOC" is always treated as "Faculty of Computing" 
+    // to match your standardized database records.
+    String standardizedFaculty = facultyCode;
+    if (facultyCode.toUpperCase() == "FOC") {
+      standardizedFaculty = "Faculty of Computing";
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F9),
       appBar: AppBar(
-        title: Text('Lecturers for $moduleName', style: const TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.bold)),
+        title: Text('Lecturers for $moduleName', 
+          style: const TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
@@ -23,7 +32,8 @@ class FilteredLecturerListScreen extends StatelessWidget {
         ),
       ),
       body: FutureBuilder<List<LecturerModel>>(
-        future: DatabaseService().getFilteredLecturers(facultyCode, moduleName),
+        // Uses the standardized name for the Firestore query
+        future: DatabaseService().getFilteredLecturers(standardizedFaculty, moduleName),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator(color: Color(0xFF10B981)));
@@ -43,11 +53,12 @@ class FilteredLecturerListScreen extends StatelessWidget {
   }
 
   Widget _buildLecturerTile(BuildContext context, LecturerModel lecturer) {
-    // --- STATUS LOGIC ---
     String status = lecturer.availability ?? "Busy";
+    
+    // UI logic for badges remains consistent
     Color badgeColor = status == "Available" 
         ? const Color(0xFF10B981) 
-        : (status.contains("Lecture") ? Colors.orange : Colors.grey);
+        : (status.contains("Lecture") || status.contains("Weekend") ? Colors.orange : Colors.grey);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -60,21 +71,16 @@ class FilteredLecturerListScreen extends StatelessWidget {
           radius: 25,
           backgroundColor: badgeColor.withOpacity(0.1),
           child: Text(
-            lecturer.name[0].toUpperCase(), 
+            lecturer.name.isNotEmpty ? lecturer.name[0].toUpperCase() : "?", 
             style: TextStyle(color: badgeColor, fontWeight: FontWeight.bold)
           ),
         ),
         title: Row(
           children: [
             Expanded(child: Text(lecturer.name, style: const TextStyle(fontWeight: FontWeight.bold))),
-            // --- UPDATED DYNAMIC TEXT ---
             Text(
-              status.contains("Lecture") ? "In Class" : status,
-              style: TextStyle(
-                color: badgeColor, 
-                fontSize: 11, 
-                fontWeight: FontWeight.w600
-              ),
+              status.contains("Lecture") ? "In Class" : (status.contains("Weekend") ? "Weekend" : status),
+              style: TextStyle(color: badgeColor, fontSize: 11, fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -102,7 +108,8 @@ class FilteredLecturerListScreen extends StatelessWidget {
         children: [
           Icon(Icons.person_off_outlined, size: 64, color: Colors.grey.shade300),
           const SizedBox(height: 16),
-          const Text("No lecturers found for this module.", style: TextStyle(color: Colors.grey, fontSize: 16)),
+          const Text("No lecturers found for this module.", 
+            style: TextStyle(color: Colors.grey, fontSize: 16)),
         ],
       ),
     );
