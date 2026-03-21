@@ -93,6 +93,7 @@ class _AddLecturerScreenState extends State<AddLecturerScreen> {
       faculty: _selectedFaculty!,
       modules: _selectedModules,
       location: 'Not Specified', // Default value for location
+      timetableURL: '', // Default value for timetableURL
     );
 
     String? errorMessage = await _authService.registerLecturer(lecturer);

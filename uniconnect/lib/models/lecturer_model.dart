@@ -9,6 +9,7 @@ class LecturerModel {
   final String availability;
   final String role;
   final String location;
+  final String timetableURL;
 
   LecturerModel({
     required this.uid,
@@ -21,6 +22,7 @@ class LecturerModel {
     this.availability = 'Not in Lecture',
     this.role = 'lecturer',
     required this.location,
+    required this.timetableURL,
   });
 
   // Converts the LecturerModel object into a Map (for uploading to Firestore)
@@ -37,10 +39,10 @@ class LecturerModel {
       'role': role,
       'createdAt': DateTime.now().toIso8601String(),
       'location': location,
+      'timetableURL': timetableURL,
     };
   }
 
-  // Factory constructor: Creates a LecturerModel object from a Map (downloaded from Firestore)
   factory LecturerModel.fromMap(Map<String, dynamic> map) {
     return LecturerModel(
       uid: map['uid'] ?? '',
@@ -49,9 +51,9 @@ class LecturerModel {
       staffId: map['staffId'] ?? '',
       pin: map['pin'] ?? '',
       faculty: map['faculty'] ?? '',
-      // FIXED: Changed 'data' to 'map' to match the parameter name
-      location: map['location'] ?? 'Not Specified', 
-      // Safely handle the list conversion
+      location: map['location'] ?? 'Not Specified',
+      // Safely handle timetableURL retrieval
+      timetableURL: map['timetableURL'] ?? '',
       modules: List<String>.from(map['modules'] ?? []),
       availability: map['availability'] ?? 'Not in Lecture',
       role: map['role'] ?? 'lecturer',

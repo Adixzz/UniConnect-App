@@ -25,8 +25,18 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
   String _selectedDate = "All";
   bool _isLoadingSlots = true;
 
-  final String exportUrl = "https://docs.google.com/spreadsheets/d/1N-8ZbnpqlKt2bsdk4UnBYCKJM6slHK2aHyKNMYaHVQA/export?format=csv";
-  final Uri editUrl = Uri.parse("https://docs.google.com/spreadsheets/d/1N-8ZbnpqlKt2bsdk4UnBYCKJM6slHK2aHyKNMYaHVQA/edit");
+  // --- DYNAMIC URL HELPERS ---
+  // Converts standard "edit" URL to "export?format=csv" for data fetching
+  String get _exportUrl {
+    String baseUrl = widget.currentLecturer.timetableURL;
+    if (baseUrl.contains('/edit')) {
+      return baseUrl.split('/edit')[0] + '/export?format=csv';
+    }
+    return baseUrl;
+  }
+
+  // Returns the standard URL for browser editing
+  Uri get _editUri => Uri.parse(widget.currentLecturer.timetableURL);
 
   @override
   void initState() {
@@ -79,11 +89,17 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
   }
 
   Future<void> _fetchSpreadsheetSlots() async {
+    if (widget.currentLecturer.timetableURL.isEmpty) {
+      if (mounted) setState(() => _isLoadingSlots = false);
+      return;
+    }
+
     if (!mounted) return;
     setState(() => _isLoadingSlots = true);
     
     try {
-      final response = await http.get(Uri.parse(exportUrl));
+      // USES DYNAMIC EXPORT URL
+      final response = await http.get(Uri.parse(_exportUrl));
       if (!mounted) return;
 
       if (response.statusCode == 200) {
@@ -98,7 +114,6 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
         DateTime now = DateTime.now();
         DateTime todayMidnight = DateTime(now.year, now.month, now.day);
 
-        // --- 1. WEEKEND SCANNER ---
         Set<int> weekendColumnIndices = {};
         for (var row in sheet) {
           for (int j = 0; j < row.length; j++) {
@@ -108,7 +123,6 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
           }
         }
 
-        // --- 2. DETECT AUTO-STATUS (LECTURE OR WEEKEND) ---
         String todayStr = DateFormat("MMM d").format(now).replaceAll(' ', '');
         int todayCol = -1;
         for (int j = 0; j < dates.length; j++) {
@@ -140,7 +154,6 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
           }
         }
 
-        // --- 3. PARSE UPCOMING FREE SLOTS ---
         for (int i = 1; i < sheet.length; i++) {
           List<String> row = sheet[i];
           if (row.length < 2) continue;
@@ -226,7 +239,8 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
   }
 
   Future<void> _openSpreadsheet() async {
-    if (!await launchUrl(editUrl)) throw Exception('Could not launch $editUrl');
+    // USES DYNAMIC EDIT URI
+    if (!await launchUrl(_editUri)) throw Exception('Could not launch $_editUri');
   }
 
   @override
@@ -261,9 +275,11 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
           const SizedBox(height: 12),
           if (!_isLoadingSlots && uniqueDates.isNotEmpty) _buildFilterBar(),
           Expanded(
-            child: _isLoadingSlots 
-              ? const Center(child: CircularProgressIndicator()) 
-              : _buildGroupedSlotList(filteredList),
+            child: widget.currentLecturer.timetableURL.isEmpty 
+              ? const Center(child: Text("No timetable URL linked to your account."))
+              : (_isLoadingSlots 
+                  ? const Center(child: CircularProgressIndicator()) 
+                  : _buildGroupedSlotList(filteredList)),
           ),
         ],
       ),
