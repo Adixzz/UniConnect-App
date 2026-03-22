@@ -1,0 +1,119 @@
+import 'package:flutter/material.dart';
+
+class ScheduleTile extends StatelessWidget {
+  final String name;
+  final String time;
+  final String type; 
+  final VoidCallback? onTap; 
+
+  const ScheduleTile({
+    super.key,
+    required this.name,
+    required this.time,
+    required this.type,
+    this.onTap, 
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Define colors based on the meeting type tag
+    final bool isPrivate = type.toLowerCase() == "private";
+    final Color tagBgColor = isPrivate
+        ? Colors.grey.shade100
+        : Colors.blue.shade50;
+    final Color tagTextColor = isPrivate
+        ? Colors.grey.shade700
+        : Colors.blue.shade700;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(
+            15,
+          ), 
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.access_time_filled,
+                    color: Colors.blue,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        time,
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: tagBgColor,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade300, width: 0.5),
+                  ),
+                  child: Text(
+                    type,
+                    style: TextStyle(
+                      color: tagTextColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 8),
+                const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

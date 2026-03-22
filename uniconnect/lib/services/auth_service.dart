@@ -1,7 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Make sure to add this import!
-import '../models/student_model.dart';
-import '../models/lecturer_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; 
+
+import '../student/student_models/student_model.dart';
+import '../student/student_models/lecturer_model.dart';
 import 'database_service.dart';
 
 class AuthService {
@@ -43,8 +44,10 @@ class AuthService {
     }
 
     try {
-      UserCredential userCredential = await _auth
-          .createUserWithEmailAndPassword(email: email, password: password);
+      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
       await userCredential.user?.sendEmailVerification();
 
@@ -73,8 +76,10 @@ class AuthService {
     required String password,
   }) async {
     try {
-      UserCredential userCredential = await _auth
-          .createUserWithEmailAndPassword(email: email, password: password);
+      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
       await DatabaseService().saveUser(
         StudentModel(
@@ -97,11 +102,10 @@ class AuthService {
   // 4. Lecturer Register
   Future<String?> registerLecturer(LecturerModel lecturer) async {
     try {
-      UserCredential userCredential = await _auth
-          .createUserWithEmailAndPassword(
-            email: lecturer.email,
-            password: lecturer.pin,
-          );
+      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+        email: lecturer.email,
+        password: lecturer.pin,
+      );
 
       await DatabaseService().saveLecturer(
         LecturerModel(
@@ -140,12 +144,10 @@ class AuthService {
           .get();
 
       if (snapshot.docs.isEmpty) {
-        return "Invalid Staff ID or Access Pin."; // Return error string
+        return "Invalid Staff ID or Access Pin."; 
       }
 
-      // Success! Return the actual lecturer data
-      Map<String, dynamic> lecturerData =
-          snapshot.docs.first.data() as Map<String, dynamic>;
+      Map<String, dynamic> lecturerData = snapshot.docs.first.data() as Map<String, dynamic>;
       return LecturerModel.fromMap(lecturerData);
     } catch (e) {
       return "An unexpected error occurred: $e";

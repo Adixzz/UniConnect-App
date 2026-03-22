@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:uniconnect/screens/auth/welcome_screen.dart';
-import 'package:uniconnect/screens/lecturer/lecturer_main_nav.dart';
-import 'package:uniconnect/screens/student/student_home.dart';
-import 'package:uniconnect/screens/student/student_main_nav.dart';
 import 'firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 
