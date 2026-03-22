@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:uniconnect/screens/admin/manage_timetable_screen.dart';
-import 'package:uniconnect/screens/admin/manage_users_screen.dart';
+import 'package:uniconnect/screens/admin_screens/manage_timetable_screen.dart';
+import 'package:uniconnect/screens/admin_screens/manage_users_screen.dart';
 import 'manage_users_screen.dart';
 import 'manage_club_screen.dart';
 import 'manage_timetable_screen.dart';

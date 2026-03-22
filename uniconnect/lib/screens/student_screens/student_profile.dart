@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/student_database_service.dart';
-import '../../screens/auth/welcome_screen.dart'; 
-import '../student_widgets/profile_activity_item.dart';
-import '../student_widgets/profile_notification_item.dart';
-import '../student_widgets/profile_setting_item.dart';
+import '../auth_screen/welcome_screen.dart'; 
+import '../../widgets/student_widgets/profile_activity_item.dart';
+import '../../widgets/student_widgets/profile_notification_item.dart';
+import '../../widgets/student_widgets/profile_setting_item.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});

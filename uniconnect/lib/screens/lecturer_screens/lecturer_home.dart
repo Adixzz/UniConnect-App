@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../lecturer_widgets/summary_card.dart';
-import '../lecturer_widgets/request_card.dart';
-import '../lecturer_widgets/ScheduleTile.dart';
+import '../../widgets/lecturer_widgets/summary_card.dart';
+import '../../widgets/lecturer_widgets/request_card.dart';
+import '../../widgets/lecturer_widgets/schedule_tile.dart';
 import '../../models/lecturer_model.dart'; 
 import 'lecturer_request.dart';
 

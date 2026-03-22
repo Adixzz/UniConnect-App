@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:uniconnect/services/student_database_service.dart';
-import 'package:uniconnect/student/student_models/student_model.dart';
+import 'package:uniconnect/models/student_model.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});

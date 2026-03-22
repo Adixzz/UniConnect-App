@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../student_models/meeting_models.dart';
+import '../../models/meeting_models.dart';
 
 class MeetingCard extends StatelessWidget {
   final Meeting meeting;
