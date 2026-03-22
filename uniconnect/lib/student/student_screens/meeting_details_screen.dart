@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart'; 
 import 'package:uniconnect/student/student_screens/student_main_nav.dart';
 import '../../student/student_models/lecturer_model.dart';
-import '../../services/database_service.dart';
+import '../../services/student/database_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class MeetingDetailsScreen extends StatefulWidget {

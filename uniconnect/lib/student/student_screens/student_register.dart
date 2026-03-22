@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../student/student_models/student_model.dart';
-import '../../services/database_service.dart';
-import '../../services/auth_service.dart';
+import '../../services/student/database_service.dart';
+
+import '../../services/student/auth_service.dart';
 
 class StudentRegisterScreen extends StatefulWidget {
   const StudentRegisterScreen({super.key});

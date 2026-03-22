@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:uniconnect/student/student_screens/student_main_nav.dart';
 import 'student_register.dart';
-import '../../services/auth_service.dart';
+import '../../services/student/auth_service.dart';
 import 'student_home.dart';
 
 class StudentLoginScreen extends StatefulWidget {

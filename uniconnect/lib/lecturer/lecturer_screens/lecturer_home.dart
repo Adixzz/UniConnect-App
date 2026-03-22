@@ -4,7 +4,6 @@ import '../lecturer_widgets/summary_card.dart';
 import '../lecturer_widgets/request_card.dart';
 import '../lecturer_widgets/ScheduleTile.dart';
 import '../lecturer_models/lecturer_model.dart'; 
-
 import 'lecturer_request.dart';
 
 class LecturerHomeScreen extends StatefulWidget {
@@ -25,7 +24,14 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
     _fetchTotalStudents();
   }
 
-  // Fetch total students from the 'users' collection
+  // --- DYNAMIC GREETING HELPER ---
+  String _getDynamicGreeting() {
+    var hour = DateTime.now().hour;
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  }
+
   Future<void> _fetchTotalStudents() async {
     try {
       QuerySnapshot snapshot = await FirebaseFirestore.instance
@@ -48,7 +54,6 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
     return "${now.day}/${now.month}/${now.year}";
   }
 
-  // parse time strings into sortable numbers 
   int _timeToMinutes(String timeStr) {
     try {
       timeStr = timeStr.trim().toUpperCase();
@@ -92,31 +97,20 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
               return const Center(child: Text("Something went wrong"));
             }
 
-            // Organize the data!
             List<QueryDocumentSnapshot> allMeetings = snapshot.data?.docs ?? [];
 
-            List<QueryDocumentSnapshot> pendingRequests = allMeetings.where((
-              doc,
-            ) {
+            List<QueryDocumentSnapshot> pendingRequests = allMeetings.where((doc) {
               return doc['status'] == 'Pending';
             }).toList();
 
-            List<QueryDocumentSnapshot> todaysSchedule = allMeetings.where((
-              doc,
-            ) {
+            List<QueryDocumentSnapshot> todaysSchedule = allMeetings.where((doc) {
               return doc['date'] == todayString && doc['status'] == 'Accepted';
             }).toList();
 
             todaysSchedule.sort((a, b) {
               Map<String, dynamic> dataA = a.data() as Map<String, dynamic>;
               Map<String, dynamic> dataB = b.data() as Map<String, dynamic>;
-
-              int timeA = _timeToMinutes(dataA['time'] ?? '');
-              int timeB = _timeToMinutes(dataB['time'] ?? '');
-
-              return timeA.compareTo(
-                timeB,
-              ); 
+              return _timeToMinutes(dataA['time'] ?? '').compareTo(_timeToMinutes(dataB['time'] ?? '')); 
             });
 
             return SingleChildScrollView(
@@ -124,9 +118,10 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "Good Morning",
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                  // --- UPDATED: Dynamic Greeting ---
+                  Text(
+                    _getDynamicGreeting(),
+                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                   ),
                   Text(
                     widget.currentLecturer.name,
@@ -139,24 +134,21 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
                     children: [
                       SummaryCard(
                         title: "Today",
-                        count:
-                            "${todaysSchedule.length}", 
+                        count: "${todaysSchedule.length}", 
                         icon: Icons.calendar_today,
                         color: Colors.blue,
                         cardWidth: 120,
                       ),
                       SummaryCard(
                         title: "Pending",
-                        count:
-                            "${pendingRequests.length}", 
+                        count: "${pendingRequests.length}", 
                         icon: Icons.error_outline,
                         color: Colors.orange,
                         cardWidth: 120,
                       ),
                       SummaryCard(
                         title: "Students",
-                        count:
-                            "$_totalStudents", 
+                        count: "$_totalStudents", 
                         icon: Icons.people_outline,
                         color: Colors.green,
                         cardWidth: 120,
@@ -165,7 +157,6 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
                   ),
                   const SizedBox(height: 30),
 
-                  
                   const Text(
                     "Today's Schedule",
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -179,34 +170,20 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
                     ),
 
                   ...todaysSchedule.map((doc) {
-                    Map<String, dynamic> data =
-                        doc.data() as Map<String, dynamic>;
-
+                    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
                     return FutureBuilder<DocumentSnapshot>(
-                      future: FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(data['studentUid'])
-                          .get(),
+                      future: FirebaseFirestore.instance.collection('users').doc(data['studentUid']).get(),
                       builder: (context, userSnapshot) {
                         String studentName = "Loading...";
                         if (userSnapshot.hasData && userSnapshot.data!.exists) {
                           studentName = userSnapshot.data!['name'];
                         }
-
                         return ScheduleTile(
                           name: studentName,
                           time: data['time'] ?? 'No time set',
                           type: data['moduleName'] ?? 'General',
-                          // --- NAVIGATE TO REQUESTS SCREEN ---
                           onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => RequestsScreen(
-                                  currentLecturer: widget.currentLecturer,
-                                ),
-                              ),
-                            );
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => RequestsScreen(currentLecturer: widget.currentLecturer)));
                           },
                         );
                       },
@@ -215,7 +192,6 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
 
                   const SizedBox(height: 30),
 
-                  // Display Pending Requests
                   const Text(
                     "Pending Requests",
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -223,75 +199,34 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
                   const SizedBox(height: 15),
 
                   if (pendingRequests.isEmpty)
-                    const Text(
-                      "No pending requests.",
-                      style: TextStyle(color: Colors.grey),
-                    ),
+                    const Text("No pending requests.", style: TextStyle(color: Colors.grey)),
 
                   ...pendingRequests.map((doc) {
-                    Map<String, dynamic> data =
-                        doc.data() as Map<String, dynamic>;
-
+                    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
                     return FutureBuilder<DocumentSnapshot>(
-                      future: FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(data['studentUid'])
-                          .get(),
+                      future: FirebaseFirestore.instance.collection('users').doc(data['studentUid']).get(),
                       builder: (context, userSnapshot) {
                         String studentName = "Loading...";
                         if (userSnapshot.hasData && userSnapshot.data!.exists) {
                           studentName = userSnapshot.data!['name'];
                         }
-
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12.0),
                           child: RequestActionCard(
                             name: studentName,
                             reason: data['reason'] ?? 'No reason provided',
-
-                            time:
-                                "${data['date'] ?? 'No Date'} at ${data['time'] ?? 'No Time'}",
-
+                            time: "${data['date'] ?? 'No Date'} at ${data['time'] ?? 'No Time'}",
                             onApprove: () async {
                               try {
-                                await FirebaseFirestore.instance
-                                    .collection('meetings')
-                                    .doc(
-                                      doc.id,
-                                    ) // Target this specific document
-                                    .update({'status': 'Accepted'});
-
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Meeting Approved!'),
-                                    ),
-                                  );
-                                }
-                              } catch (e) {
-                                print("Error approving: $e");
-                              }
+                                await FirebaseFirestore.instance.collection('meetings').doc(doc.id).update({'status': 'Accepted'});
+                                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Meeting Approved!')));
+                              } catch (e) { print("Error approving: $e"); }
                             },
-
                             onDecline: () async {
                               try {
-                                await FirebaseFirestore.instance
-                                    .collection('meetings')
-                                    .doc(
-                                      doc.id,
-                                    ) // Target this specific document
-                                    .update({'status': 'Declined'});
-
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Meeting Declined.'),
-                                    ),
-                                  );
-                                }
-                              } catch (e) {
-                                print("Error declining: $e");
-                              }
+                                await FirebaseFirestore.instance.collection('meetings').doc(doc.id).update({'status': 'Declined'});
+                                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Meeting Declined.')));
+                              } catch (e) { print("Error declining: $e"); }
                             },
                           ),
                         );

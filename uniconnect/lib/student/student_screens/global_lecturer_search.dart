@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../student/student_models/lecturer_model.dart';
-import '../../services/database_service.dart';
+import '../../services/student/database_service.dart';
 import 'meeting_details_screen.dart';
 
 class GlobalLecturerSearch extends StatefulWidget {

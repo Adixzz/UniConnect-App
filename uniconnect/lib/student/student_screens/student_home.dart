@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
-import '../../services/database_service.dart';
+import 'package:uniconnect/services/student/database_service.dart';
+import 'package:uniconnect/student/student_models/student_model.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -14,6 +15,14 @@ class StudentHomeScreen extends StatefulWidget {
 class _StudentHomeScreenState extends State<StudentHomeScreen> {
   final String currentUid = FirebaseAuth.instance.currentUser?.uid ?? "";
   final DatabaseService _dbService = DatabaseService();
+
+  // --- DYNAMIC GREETING HELPER ---
+  String _getDynamicGreeting() {
+    var hour = DateTime.now().hour;
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +48,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
   }
 
-  // 1. DYNAMIC GREETING
+  // 1. DYNAMIC HEADER
   Widget _buildHeader() {
     return FutureBuilder<DocumentSnapshot>(
       future: _dbService.getUserData(currentUid),
@@ -51,8 +60,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Good Morning", 
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+            // --- UPDATED: Dynamic Greeting ---
+            Text(
+              _getDynamicGreeting(), 
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)
+            ),
             Text(name, 
               style: const TextStyle(fontSize: 18, color: Colors.grey)),
           ],
@@ -112,7 +124,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               } catch (e) { return true; }
             }).toList();
 
-            // Display Empty State if no meetings
             if (filteredDocs.isEmpty) {
               return _buildEmptyState(
                 icon: Icons.event_available_outlined,
@@ -161,7 +172,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               return data['status'] == 'Pending';
             }).toList();
 
-            // Display Empty State if no requests
             if (pendingDocs.isEmpty) {
               return _buildEmptyState(
                 icon: Icons.hourglass_empty_rounded,
@@ -185,7 +195,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
   }
 
-  // EMPTY STATE WIDGET
   Widget _buildEmptyState({required IconData icon, required String message}) {
     return Container(
       width: double.infinity,
@@ -223,7 +232,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
   }
 
-  // DATE/TIME PARSING ---
   DateTime _parseEndDateTime(String dateStr, String timeRange) {
     try {
       int year = 2026; 

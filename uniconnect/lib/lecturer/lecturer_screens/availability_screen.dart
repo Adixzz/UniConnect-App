@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart'; 
-import '../../services/database_service.dart';
+import '../../services/lecturer/database_service.dart';
 import '../lecturer_models/lecturer_model.dart';
 
 class AvailabilityScreen extends StatefulWidget {

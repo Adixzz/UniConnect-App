@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/database_service.dart'; 
+import '../../services/student/database_service.dart';
 import 'filtered_lecturer_list_screen.dart';
 import '../../student/student_models/faculty_module_model.dart';
 
