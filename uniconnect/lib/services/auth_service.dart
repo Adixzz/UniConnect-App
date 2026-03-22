@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/student_model.dart';
 import '../models/lecturer_model.dart';
+import '../models/admin_model.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'database_service.dart';
 
 class AuthService {
@@ -48,7 +50,7 @@ class AuthService {
 
       await userCredential.user?.sendEmailVerification();
 
-      await DatabaseService().saveUser(StudentModel(
+      await DatabaseService().saveStudent(StudentModel(
         uid: userCredential.user!.uid,
         name: name,
         email: email,
@@ -69,19 +71,17 @@ class AuthService {
     required String name,
     required String email,
     required String password,
+    required String adminId,
   }) async {
     try {
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      UserCredential userCredential = await _auth
+          .createUserWithEmailAndPassword(email: email, password: password);
 
-      await DatabaseService().saveUser(StudentModel(
+      await DatabaseService().saveAdmin(AdminModel(
         uid: userCredential.user!.uid,
         name: name,
-        email: email,
-        studentId: '',
-        role: 'admin',
+        adminId: adminId,
+        createdAt: DateTime.now().toIso8601String(),
       ));
 
       return null;
@@ -118,4 +118,16 @@ class AuthService {
       return "An unexpected error occurred.";
     }
   }
+
+  // 5. Save FCM token after student logs in
+  Future<void> saveFcmToken(String uid) async {
+  try {
+    final token = await FirebaseMessaging.instance.getToken();
+    if (token != null) {
+      await DatabaseService().saveFcmToken(uid, token);
+    }
+  } catch (e) {
+    print("Error saving FCM token: $e");
+  }
+}
 }

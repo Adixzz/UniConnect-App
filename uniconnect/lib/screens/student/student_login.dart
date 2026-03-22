@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'student_register.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/auth_service.dart'; 
 
 class StudentLoginScreen extends StatefulWidget {
@@ -27,6 +28,10 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     if (mounted) setState(() => _isLoading = false); 
 
     if (errorMessage == null) {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) {
+        await _authService.saveFcmToken(uid);
+      }
       _showSnackBar("Login Successful!");
       // Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const StudentHomeScreen()));
     } else {

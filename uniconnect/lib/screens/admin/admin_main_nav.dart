@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import 'add_user_screen.dart';
+import 'package:uniconnect/screens/admin/manage_timetable_screen.dart';
+import 'package:uniconnect/screens/admin/manage_users_screen.dart';
+import 'manage_users_screen.dart';
 import 'manage_club_screen.dart';
+import 'manage_timetable_screen.dart';
 
 class AdminMainNav extends StatefulWidget {
   const AdminMainNav({super.key});
@@ -13,8 +16,9 @@ class _AdminMainNavState extends State<AdminMainNav> {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
-    const AddUserScreen(),           // index 1 — add user
-    const ClubManageScreen(),        // index 2 — manage clubs
+    const ManageUsersScreen(),
+    const ClubManageScreen(),  
+    const TimetableManageScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -35,12 +39,16 @@ class _AdminMainNavState extends State<AdminMainNav> {
         unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Add User',
+            icon: Icon(Icons.person_add),
+            label: 'Manage Users',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person_add),
+            icon: Icon(Icons.dashboard),
             label: 'Manage Clubs',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today),
+            label: 'Manage Timetable',
           ),
         ],
       ),

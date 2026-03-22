@@ -11,6 +11,7 @@ class AddAdminScreen extends StatefulWidget {
 class _AddAdminScreenState extends State<AddAdminScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _adminIdController = TextEditingController(); // ADDED
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final AuthService _authService = AuthService();
@@ -20,6 +21,7 @@ class _AddAdminScreenState extends State<AddAdminScreen> {
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _adminIdController.dispose(); // ADDED
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -28,10 +30,13 @@ class _AddAdminScreenState extends State<AddAdminScreen> {
   Future<void> _addAdmin() async {
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
+    final adminId = _adminIdController.text.trim(); // ADDED
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
 
-    if (name.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+    if (name.isEmpty || email.isEmpty ||
+        adminId.isEmpty || password.isEmpty ||
+        confirmPassword.isEmpty) {
       _showSnackBar("Please fill in all fields");
       return;
     }
@@ -47,6 +52,7 @@ class _AddAdminScreenState extends State<AddAdminScreen> {
       name: name,
       email: email,
       password: password,
+      adminId: adminId, // ADDED
     );
 
     if (mounted) setState(() => _isLoading = false);
@@ -60,7 +66,9 @@ class _AddAdminScreenState extends State<AddAdminScreen> {
   }
 
   void _showSnackBar(String msg) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg)),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -78,9 +86,14 @@ class _AddAdminScreenState extends State<AddAdminScreen> {
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 children: [
-                  _buildTextField(_nameController, "Full Name", Icons.person),
+                  _buildTextField(
+                      _nameController, "Full Name", Icons.person),
                   const SizedBox(height: 16),
-                  _buildTextField(_emailController, "Email", Icons.email),
+                  _buildTextField(
+                      _emailController, "Email", Icons.email),
+                  const SizedBox(height: 16),
+                  _buildTextField(
+                      _adminIdController, "Admin ID", Icons.badge), // ADDED
                   const SizedBox(height: 16),
                   _buildTextField(
                     _passwordController,
