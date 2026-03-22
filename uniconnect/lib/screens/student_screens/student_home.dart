@@ -14,7 +14,7 @@ class StudentHomeScreen extends StatefulWidget {
 
 class _StudentHomeScreenState extends State<StudentHomeScreen> {
   final String currentUid = FirebaseAuth.instance.currentUser?.uid ?? "";
-  final DatabaseService _dbService = DatabaseService();
+  final StudentDatabaseService _dbService = StudentDatabaseService();
 
   // --- DYNAMIC GREETING HELPER ---
   String _getDynamicGreeting() {

@@ -24,7 +24,7 @@ class FacultySelectionScreen extends StatelessWidget {
       ),
       // --- DYNAMIC DATA FETCHING ---
       body: FutureBuilder<List<FacultyModel>>(
-        future: DatabaseService().getFaculties(),
+        future: StudentDatabaseService().getFaculties(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator(color: Color(0xFF10B981)));

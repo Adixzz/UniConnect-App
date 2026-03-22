@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
 
-class DatabaseService {
+class LecturerDatabaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   // Fetch basic user data from Firestore

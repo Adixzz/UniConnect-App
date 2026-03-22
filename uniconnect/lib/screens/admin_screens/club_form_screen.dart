@@ -16,7 +16,7 @@ class _ClubFormScreenState extends State<ClubFormScreen> {
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _studentIdSearchController = TextEditingController(); // for searching
-  final DatabaseService _dbService = DatabaseService();
+  final AdminDatabaseService _dbService = AdminDatabaseService();
 
   String? _selectedCategory;
   String? _presidentUid;    // set after search, not typed manually

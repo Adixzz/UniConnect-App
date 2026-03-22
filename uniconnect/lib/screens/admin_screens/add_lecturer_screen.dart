@@ -17,7 +17,7 @@ class _AddLecturerScreenState extends State<AddLecturerScreen> {
   final _pinController = TextEditingController();
   final _locationController = TextEditingController();
   final AuthService _authService = AuthService();
-  final DatabaseService _dbService = DatabaseService();
+  final AdminDatabaseService _dbService = AdminDatabaseService();
 
   String? _selectedFaculty;
   List<String> _faculties = [];

@@ -30,7 +30,7 @@ class FilteredLecturerListScreen extends StatelessWidget {
         ),
       ),
       body: FutureBuilder<List<LecturerModel>>(
-        future: DatabaseService().getFilteredLecturers(standardizedFaculty, moduleName),
+        future: StudentDatabaseService().getFilteredLecturers(standardizedFaculty, moduleName),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator(color: Color(0xFF10B981)));

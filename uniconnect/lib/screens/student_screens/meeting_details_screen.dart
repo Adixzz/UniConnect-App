@@ -284,7 +284,7 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
     try {
-      await DatabaseService().saveMeetingRequest(
+      await StudentDatabaseService().saveMeetingRequest(
         studentUid: currentUser.uid,
         lecturerUid: widget.lecturer.uid,
         lecturerName: widget.lecturer.name,

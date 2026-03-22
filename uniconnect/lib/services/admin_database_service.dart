@@ -6,7 +6,7 @@ import '../models/club_model.dart';
 import '../models/timetable_model.dart';
 import '../models/admin_model.dart';
 
-class DatabaseService {
+class AdminDatabaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
 

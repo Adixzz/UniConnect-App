@@ -32,7 +32,7 @@ class ModuleSelectionScreen extends StatelessWidget {
           ),
           Expanded(
             child: FutureBuilder<List<ModuleModel>>(
-              future: DatabaseService().getModulesByFaculty(facultyCode),
+              future: StudentDatabaseService().getModulesByFaculty(facultyCode),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator(color: Color(0xFF10B981)));

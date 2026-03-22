@@ -15,7 +15,7 @@ class ManageUsersScreen extends StatefulWidget {
 
 class _ManageUsersScreenState extends State<ManageUsersScreen>
     with SingleTickerProviderStateMixin {
-  final DatabaseService _dbService = DatabaseService();
+  final AdminDatabaseService _dbService = AdminDatabaseService();
   late TabController _tabController;
 
   List<LecturerModel> _lecturers = [];

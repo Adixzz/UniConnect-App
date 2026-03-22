@@ -26,7 +26,7 @@ class _GlobalLecturerSearchState extends State<GlobalLecturerSearch> {
 
   Future<void> _fetchLecturers() async {
     try {
-      final data = await DatabaseService().getAllLecturers();
+      final data = await StudentDatabaseService().getAllLecturers();
       setState(() {
         _allLecturers = data;
         _filteredLecturers = data;

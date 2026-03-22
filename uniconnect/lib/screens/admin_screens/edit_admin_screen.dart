@@ -13,7 +13,7 @@ class EditAdminScreen extends StatefulWidget {
 class _EditAdminScreenState extends State<EditAdminScreen> {
   final _nameController = TextEditingController();
   final _adminIdController = TextEditingController();
-  final DatabaseService _dbService = DatabaseService();
+  final AdminDatabaseService _dbService = AdminDatabaseService();
   bool _isLoading = false;
 
   @override

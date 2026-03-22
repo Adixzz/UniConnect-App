@@ -13,7 +13,7 @@ class TimetableFormScreen extends StatefulWidget {
 
 class _TimetableFormScreenState extends State<TimetableFormScreen> {
   final _sheetUrlController = TextEditingController();
-  final DatabaseService _dbService = DatabaseService();
+  final AdminDatabaseService _dbService = AdminDatabaseService();
 
   String? _selectedPathway;
   String? _selectedDegree;

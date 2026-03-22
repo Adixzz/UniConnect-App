@@ -55,7 +55,7 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
 
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
-                  stream: DatabaseService().getStudentMeetings(currentUid),
+                  stream: StudentDatabaseService().getStudentMeetings(currentUid),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(
@@ -132,7 +132,7 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
                             bool? confirm = await _showCancelDialog();
                             if (confirm == true) {
                               final messenger = ScaffoldMessenger.of(context);
-                              await DatabaseService().cancelMeeting(container.id);
+                              await StudentDatabaseService().cancelMeeting(container.id);
                               if (!mounted) return;
                               messenger.showSnackBar(const SnackBar(content: Text("Meeting cancelled")));
                             }

@@ -11,7 +11,7 @@ class ClubManageScreen extends StatefulWidget {
 }
 
 class _ClubManageScreenState extends State<ClubManageScreen> {
-  final DatabaseService _dbService = DatabaseService();
+  final AdminDatabaseService _dbService = AdminDatabaseService();
   List<ClubModel> _clubs = [];
   bool _isLoading = true;
 

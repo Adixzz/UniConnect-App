@@ -15,7 +15,7 @@ class _EditLecturerScreenState extends State<EditLecturerScreen> {
   final _emailController = TextEditingController();
   final _staffIdController = TextEditingController();
   final _locationController = TextEditingController();
-  final DatabaseService _dbService = DatabaseService();
+  final AdminDatabaseService _dbService = AdminDatabaseService();
 
   String? _selectedFaculty;
   List<String> _faculties = [];

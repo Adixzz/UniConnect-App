@@ -13,7 +13,7 @@ class AvailabilityScreen extends StatefulWidget {
 }
 
 class _AvailabilityScreenState extends State<AvailabilityScreen> {
-  final DatabaseService _dbService = DatabaseService();
+  final LecturerDatabaseService _dbService = LecturerDatabaseService();
   
   bool _isAvailable = true;
   String _currentStatus = "Available";

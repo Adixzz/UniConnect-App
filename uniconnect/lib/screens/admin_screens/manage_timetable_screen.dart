@@ -12,7 +12,7 @@ class TimetableManageScreen extends StatefulWidget {
 }
 
 class _TimetableManageScreenState extends State<TimetableManageScreen> {
-  final DatabaseService _dbService = DatabaseService();
+  final AdminDatabaseService _dbService = AdminDatabaseService();
   final NotificationService _notificationService = NotificationService();
   List<TimetableModel> _timetables = [];
   bool _isLoading = true;

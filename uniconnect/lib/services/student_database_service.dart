@@ -5,7 +5,7 @@ import '../models/club_model.dart';
 import '../models/faculty_module_model.dart';
 
 
-class DatabaseService {
+class StudentDatabaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   // 1. Save Student to Firestore

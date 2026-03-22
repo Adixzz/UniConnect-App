@@ -17,7 +17,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   // Backend variables
   final String currentUid = FirebaseAuth.instance.currentUser?.uid ?? "";
-  final DatabaseService _dbService = DatabaseService();
+  final StudentDatabaseService _dbService = StudentDatabaseService();
 
   bool meetingReminders = true;
   bool clubAnnouncements = true;
