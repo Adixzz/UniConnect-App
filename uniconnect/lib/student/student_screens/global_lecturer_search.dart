@@ -100,8 +100,8 @@ class _GlobalLecturerSearchState extends State<GlobalLecturerSearch> {
   }
 
   Widget _buildLecturerCard(LecturerModel lecturer) {
-    // --- STATUS LOGIC ---
-    String status = lecturer.availability ?? "Busy";
+    //STATUS
+    String status = lecturer.availability;
     Color badgeColor = Colors.grey;
     IconData statusIcon = Icons.do_not_disturb_on;
     String displayStatus = status;
@@ -110,7 +110,7 @@ class _GlobalLecturerSearchState extends State<GlobalLecturerSearch> {
       badgeColor = primaryGreen;
       statusIcon = Icons.check_circle;
     } else if (status.contains("Lecture")) {
-      badgeColor = Colors.orange; // Orange for lectures
+      badgeColor = Colors.orange; 
       statusIcon = Icons.school;
       displayStatus = "In Lecture";
     }
@@ -135,7 +135,7 @@ class _GlobalLecturerSearchState extends State<GlobalLecturerSearch> {
         title: Row(
           children: [
             Expanded(child: Text(lecturer.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
-            // --- UPDATED DYNAMIC BADGE ---
+            //DYNAMIC BADGE
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(

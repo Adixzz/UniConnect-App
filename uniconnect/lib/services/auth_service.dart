@@ -1,8 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; 
 
-import '../models/student_models/student_model.dart';
-import '../models/student_models/lecturer_model.dart';
+import '../student/student_models/student_model.dart';
+import '../student/student_models/lecturer_model.dart';
 import 'database_service.dart';
 
 class AuthService {

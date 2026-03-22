@@ -21,7 +21,6 @@ class Meeting {
     this.showCancelButton = false,
   });
 
-  // This helper ensures the UI shows the correct color for every status
   Color get statusColor {
     switch (status) {
       case 'Confirmed':

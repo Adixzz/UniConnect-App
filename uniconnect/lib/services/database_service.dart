@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/student_models/student_model.dart';
-import '../models/student_models/lecturer_model.dart';
-import '../models/student_models/club_model.dart';
-import '../models/student_models/faculty_module_model.dart';
+import '../student/student_models/student_model.dart';
+import '../student/student_models/lecturer_model.dart';
+import '../student/student_models/club_model.dart';
+import '../student/student_models/faculty_module_model.dart';
 
 
 class DatabaseService {

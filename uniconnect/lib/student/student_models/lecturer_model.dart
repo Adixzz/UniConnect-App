@@ -53,7 +53,7 @@ class LecturerModel {
       modules: List<String>.from(map['modules'] ?? []),
       availability: map['availability'] ?? 'Not in Lecture',
       role: map['role'] ?? 'lecturer',
-      location: map['location'] ?? 'Not Specified', // Maps from Firestore
+      location: map['location'] ?? 'Not Specified', 
       timetableURL: map['timetableURL'] ?? '',
     );
   }

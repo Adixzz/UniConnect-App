@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../student/student_models/meeting_models.dart';
+import '../student_models/meeting_models.dart';
 
 class MeetingCard extends StatelessWidget {
   final Meeting meeting;
@@ -48,18 +48,16 @@ class MeetingCard extends StatelessWidget {
     );
   }
 
-// Inside your MeetingCard widget...
+
 
 Widget _buildStatusBadge() {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
     decoration: BoxDecoration(
-      // USE THE DYNAMIC COLOR FROM THE MODEL
       color: meeting.statusColor, 
       borderRadius: BorderRadius.circular(8),
     ),
     child: Text(
-      // USE THE DYNAMIC STATUS STRING FROM THE MODEL
       meeting.status, 
       style: const TextStyle(
         color: Colors.white,

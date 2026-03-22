@@ -31,8 +31,8 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
   
   bool isLoading = true;
 
-  // --- DYNAMIC URL CONVERTER ---
-  // Transforms the lecturer's "edit" URL into a "CSV export" URL
+  // DYNAMIC URL CONVERTER
+ 
   String get _dynamicSheetUrl {
     String baseUrl = widget.lecturer.timetableURL;
     if (baseUrl.contains('/edit')) {
@@ -47,7 +47,7 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
     _fetchAvailableSlots();
   }
 
-  // --- TIME PARSER HELPER ---
+  //TIME PARSER HELPER
   DateTime _parseSlotTime(String timeStr, DateTime dateContext) {
     try {
       final parts = timeStr.trim().split(" ");
@@ -64,16 +64,14 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
     }
   }
 
-  // --- MAIN FETCH & FILTER LOGIC ---
+  // MAIN FETCH & FILTER LOGIC 
   Future<void> _fetchAvailableSlots() async {
-    // Safety check: Ensure the lecturer has a URL linked
     if (widget.lecturer.timetableURL.isEmpty) {
       if (mounted) setState(() => isLoading = false);
       return;
     }
 
     try {
-      // USES THE DYNAMIC URL FROM THE SELECTED LECTURER
       final response = await http.get(Uri.parse(_dynamicSheetUrl));
 
       if (response.statusCode == 200) {
@@ -222,9 +220,7 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
     );
   }
 
-  // --- REST OF THE UI WIDGETS ---
-  // (Include _buildDateFilterBar, _buildTimeSlotList, _submitMeetingRequest, _buildLecturerSummary, _showSuccessDialog)
-  // These stay largely the same but ensure they reference the correct data.
+ //Widgets
 
   Widget _buildDateFilterBar() {
     if (uniqueDates.isEmpty) {

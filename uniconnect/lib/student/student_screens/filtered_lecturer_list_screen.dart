@@ -11,9 +11,7 @@ class FilteredLecturerListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // --- STANDARDIZATION HELPER ---
-    // This ensures that "FOC" is always treated as "Faculty of Computing" 
-    // to match your standardized database records.
+  
     String standardizedFaculty = facultyCode;
     if (facultyCode.toUpperCase() == "FOC") {
       standardizedFaculty = "Faculty of Computing";
@@ -32,7 +30,6 @@ class FilteredLecturerListScreen extends StatelessWidget {
         ),
       ),
       body: FutureBuilder<List<LecturerModel>>(
-        // Uses the standardized name for the Firestore query
         future: DatabaseService().getFilteredLecturers(standardizedFaculty, moduleName),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {

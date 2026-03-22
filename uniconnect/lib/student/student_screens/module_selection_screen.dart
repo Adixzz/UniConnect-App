@@ -30,7 +30,6 @@ class ModuleSelectionScreen extends StatelessWidget {
             child: Text("Select the module you need help with", 
               style: TextStyle(color: Colors.grey, fontSize: 15)),
           ),
-          // --- DYNAMIC DATA FETCHING ---
           Expanded(
             child: FutureBuilder<List<ModuleModel>>(
               future: DatabaseService().getModulesByFaculty(facultyCode),

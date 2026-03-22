@@ -59,7 +59,7 @@ class _StudentRegisterScreenState extends State<StudentRegisterScreen> {
     if (mounted) setState(() => _isLoading = false);
 
     if (errorMessage == null) {
-      // --- TRIGGER SUCCESS DIALOG INSTEAD OF SNACKBAR ---
+      
       _showSuccessDialog();
     } else {
       _showSnackBar(errorMessage);
@@ -68,7 +68,7 @@ class _StudentRegisterScreenState extends State<StudentRegisterScreen> {
 
   void _showSnackBar(String msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
-  // --- NEW: PROFESSIONAL SUCCESS DIALOG ---
+  // SUCCESS DIALOG
   void _showSuccessDialog() {
     showDialog(
       context: context,
@@ -206,7 +206,6 @@ class _StudentRegisterScreenState extends State<StudentRegisterScreen> {
     );
   }
 
-  // Helper to keep text fields clean and consistent
   Widget _buildTextField(TextEditingController controller, String label, IconData icon, {bool isPassword = false}) {
     return TextField(
       controller: controller,

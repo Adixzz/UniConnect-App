@@ -7,7 +7,6 @@ import '../../widgets/meeting_cards.dart';
 import '../../services/database_service.dart';
 import 'request_choice_screen.dart';
 
-// Helper for filtering
 enum MeetingTab { upcoming, pending, past }
 
 class MeetingDataContainer {
@@ -76,7 +75,6 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
                       final String dateStr = data['date'] ?? "";
                       final String timeStr = data['time'] ?? "";
 
-                      // Determine if the meeting has passed
                       DateTime meetingEndTime = _parseEndDateTime(dateStr, timeStr);
                       bool isExpired = now.isAfter(meetingEndTime);
 
@@ -90,7 +88,6 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
                           time: timeStr,
                           location: data['location'] ?? "Consultation Room",
                           status: status,
-                          // --- UPDATED LOGIC: Only show cancel if status is active AND meeting hasn't passed ---
                           showCancelButton: (status == 'Pending' || 
                                              status == 'Accepted' || 
                                              status == 'Confirmed') && 
@@ -198,7 +195,7 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
     );
   }
 
-  // --- ROBUST PARSER ---
+  // TIME PARSER HELPER
   DateTime _parseEndDateTime(String dateStr, String timeRange) {
     try {
       int year = 2026;
