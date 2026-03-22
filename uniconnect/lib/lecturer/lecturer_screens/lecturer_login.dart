@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:uniconnect/lecturer/lecturer_screens/lecturer_main_nav.dart';
-import 'package:uniconnect/services/lecturer/auth_service.dart';
-import 'package:uniconnect/lecturer/lecturer_models/lecturer_model.dart';
+import 'package:uniconnect/services/auth_service.dart';
+import 'package:uniconnect/models/lecturer_model.dart';
 
 class LecturerLoginScreen extends StatefulWidget {
   const LecturerLoginScreen({super.key});

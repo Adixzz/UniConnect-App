@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../lecturer_widgets/lecturer_request.dart';
-import '../lecturer_models/meeting_request.dart';
-import '../lecturer_models/lecturer_model.dart';
+import '../../models/meeting_request.dart';
+import '../../models/lecturer_model.dart';
 
 class RequestsScreen extends StatefulWidget {
   final LecturerModel currentLecturer;

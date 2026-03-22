@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/lecturer_model.dart';
-import '../../services/database_service.dart';
+import '../../services/admin_database_service.dart';
 
 class EditLecturerScreen extends StatefulWidget {
   final LecturerModel lecturer;
@@ -108,6 +108,7 @@ class _EditLecturerScreenState extends State<EditLecturerScreen> {
         modules: _selectedModules,
         location: location,
         availability: widget.lecturer.availability,
+        timetableURL: widget.lecturer.timetableURL,
       ));
 
       _showSnackBar("Lecturer updated successfully!");

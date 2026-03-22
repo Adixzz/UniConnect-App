@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../services/student/database_service.dart';
+import '../../services/student_database_service.dart';
 import '../../screens/auth/welcome_screen.dart'; 
 import '../student_widgets/profile_activity_item.dart';
 import '../student_widgets/profile_notification_item.dart';

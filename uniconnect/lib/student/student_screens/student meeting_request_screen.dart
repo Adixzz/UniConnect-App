@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../../student/student_models/meeting_models.dart';
 import '../student_widgets/meeting_cards.dart';
-import '../../services/student/database_service.dart';
+import '../../services/student_database_service.dart';
 import 'request_choice_screen.dart';
 
 enum MeetingTab { upcoming, pending, past }

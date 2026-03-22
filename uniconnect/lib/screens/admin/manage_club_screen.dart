@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/club_model.dart';
-import '../../services/database_service.dart';
+import '../../services/admin_database_service.dart';
 import 'club_form_screen.dart';
 
 class ClubManageScreen extends StatefulWidget {

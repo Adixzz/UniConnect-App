@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../lecturer_widgets/summary_card.dart';
 import '../lecturer_widgets/request_card.dart';
 import '../lecturer_widgets/ScheduleTile.dart';
-import '../lecturer_models/lecturer_model.dart'; 
+import '../../models/lecturer_model.dart'; 
 import 'lecturer_request.dart';
 
 class LecturerHomeScreen extends StatefulWidget {

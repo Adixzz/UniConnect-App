@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../lecturer_models/lecturer_model.dart';
+import '../../models/lecturer_model.dart';
 import '../../screens/auth/welcome_screen.dart';
 
 class LecturerSettingsScreen extends StatefulWidget {

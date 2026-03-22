@@ -3,10 +3,12 @@ import '../models/student_model.dart';
 import '../models/lecturer_model.dart';
 import '../models/admin_model.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'database_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'main_database_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // 1. Student Login
   Future<String?> loginStudent({
@@ -50,7 +52,7 @@ class AuthService {
 
       await userCredential.user?.sendEmailVerification();
 
-      await DatabaseService().saveStudent(StudentModel(
+      await MainDatabaseService().saveStudent(StudentModel(
         uid: userCredential.user!.uid,
         name: name,
         email: email,
@@ -77,7 +79,7 @@ class AuthService {
       UserCredential userCredential = await _auth
           .createUserWithEmailAndPassword(email: email, password: password);
 
-      await DatabaseService().saveAdmin(AdminModel(
+      await MainDatabaseService().saveAdmin(AdminModel(
         uid: userCredential.user!.uid,
         name: name,
         adminId: adminId,
@@ -100,7 +102,7 @@ class AuthService {
         password: lecturer.pin,
       );
 
-      await DatabaseService().saveLecturer(LecturerModel(
+      await MainDatabaseService().saveLecturer(LecturerModel(
         uid: userCredential.user!.uid,
         name: lecturer.name,
         email: lecturer.email,
@@ -109,6 +111,7 @@ class AuthService {
         faculty: lecturer.faculty,
         modules: lecturer.modules,
         location: lecturer.location,
+        timetableURL: lecturer.timetableURL,
       ));
 
       return null;
@@ -124,10 +127,36 @@ class AuthService {
   try {
     final token = await FirebaseMessaging.instance.getToken();
     if (token != null) {
-      await DatabaseService().saveFcmToken(uid, token);
+      await MainDatabaseService().saveFcmToken(uid, token);
     }
   } catch (e) {
     print("Error saving FCM token: $e");
   }
 }
+
+ // . Lecturer Login (Using Staff ID + PIN)
+  Future<dynamic> loginLecturer({
+    required String staffId,
+    required String pin,
+  }) async {
+    try {
+      QuerySnapshot snapshot = await _firestore
+          .collection('lecturers')
+          .where('staffId', isEqualTo: staffId)
+          .where('pin', isEqualTo: pin)
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isEmpty) {
+        return "Invalid Staff ID or Access Pin."; // Return error string
+      }
+
+      // Success! Return the actual lecturer data
+      Map<String, dynamic> lecturerData =
+          snapshot.docs.first.data() as Map<String, dynamic>;
+      return LecturerModel.fromMap(lecturerData);
+    } catch (e) {
+      return "An unexpected error occurred: $e";
+    }
+  }
 }

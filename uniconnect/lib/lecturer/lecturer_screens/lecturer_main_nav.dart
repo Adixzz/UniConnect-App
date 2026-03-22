@@ -3,7 +3,7 @@ import 'lecturer_home.dart';
 import 'availability_screen.dart';
 import 'lecturer_request.dart';
 import 'lecturer_settings.dart'; 
-import '../lecturer_models/lecturer_model.dart';
+import '../../models/lecturer_model.dart';
 
 class LecturerMainNavigation extends StatefulWidget {
   final LecturerModel currentLecturer;

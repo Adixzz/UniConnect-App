@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/club_model.dart';
-import '../../services/database_service.dart';
+import '../../services/admin_database_service.dart';
 
 class ClubFormScreen extends StatefulWidget {
   final ClubModel? existingClub;

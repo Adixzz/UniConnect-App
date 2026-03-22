@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/lecturer_model.dart';
 import '../../models/admin_model.dart';
-import '../../services/database_service.dart';
+import '../../services/admin_database_service.dart';
 import 'add_user_screen.dart';
 import 'edit_lecturer_screen.dart';
 import 'edit_admin_screen.dart';

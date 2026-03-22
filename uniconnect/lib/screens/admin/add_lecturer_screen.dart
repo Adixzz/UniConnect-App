@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
-import '../../services/database_service.dart';
+import '../../services/admin_database_service.dart';
 import '../../models/lecturer_model.dart';
 
 class AddLecturerScreen extends StatefulWidget {
@@ -95,6 +95,7 @@ class _AddLecturerScreenState extends State<AddLecturerScreen> {
       faculty: _selectedFaculty!,
       modules: _selectedModules,
       location: location,
+      timetableURL: '', // Placeholder, can be updated later by the lecturer
     );
 
     String? errorMessage = await _authService.registerLecturer(lecturer);

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../lecturer_models/meeting_request.dart'; 
+import '../../models/meeting_request.dart'; 
 
 
 class RequestCard extends StatelessWidget {

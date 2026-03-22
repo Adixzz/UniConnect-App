@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/admin_model.dart';
-import '../../services/database_service.dart';
+import '../../services/admin_database_service.dart';
 
 class EditAdminScreen extends StatefulWidget {
   final AdminModel admin;
