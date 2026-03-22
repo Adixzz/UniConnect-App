@@ -25,7 +25,6 @@ class LecturerModel {
     required this.timetableURL,
   });
 
-  // Converts the LecturerModel object into a Map (for uploading to Firestore)
   Map<String, dynamic> toMap() {
     return {
       'uid': uid,

@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/student_model.dart';
-import '../models/lecturer_model.dart';
+import '../lecturer/lecturer_models/lecturer_model.dart';
 import '../models/club_model.dart';
 
 class DatabaseService {

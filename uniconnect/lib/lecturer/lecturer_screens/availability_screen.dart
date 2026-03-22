@@ -4,7 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart'; 
 import '../../services/database_service.dart';
-import '../../models/lecturer_model.dart';
+import '../lecturer_models/lecturer_model.dart';
 
 class AvailabilityScreen extends StatefulWidget {
   final LecturerModel currentLecturer;
@@ -25,8 +25,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
   String _selectedDate = "All";
   bool _isLoadingSlots = true;
 
-  // --- DYNAMIC URL HELPERS ---
-  // Converts standard "edit" URL to "export?format=csv" for data fetching
+
   String get _exportUrl {
     String baseUrl = widget.currentLecturer.timetableURL;
     if (baseUrl.contains('/edit')) {
@@ -35,7 +34,6 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     return baseUrl;
   }
 
-  // Returns the standard URL for browser editing
   Uri get _editUri => Uri.parse(widget.currentLecturer.timetableURL);
 
   @override

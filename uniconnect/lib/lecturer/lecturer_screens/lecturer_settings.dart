@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../models/lecturer_model.dart';
-import '../auth/welcome_screen.dart';
+import '../lecturer_models/lecturer_model.dart';
+import '../../screens/auth/welcome_screen.dart';
 
 class LecturerSettingsScreen extends StatefulWidget {
   final LecturerModel currentLecturer;
@@ -14,7 +14,6 @@ class LecturerSettingsScreen extends StatefulWidget {
 }
 
 class _LecturerSettingsScreenState extends State<LecturerSettingsScreen> {
-  // --- LOCATION UPDATE LOGIC ---
   Future<void> _showUpdateLocationDialog() async {
     final TextEditingController locationController = 
         TextEditingController(text: widget.currentLecturer.location);
@@ -54,7 +53,6 @@ class _LecturerSettingsScreenState extends State<LecturerSettingsScreen> {
 
   Future<void> _updateLocationInFirestore(String newLocation) async {
     try {
-      // Find the specific lecturer document by staffId or UID
       final query = await FirebaseFirestore.instance
           .collection('lecturers')
           .where('staffId', isEqualTo: widget.currentLecturer.staffId)

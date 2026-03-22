@@ -1,32 +1,29 @@
 import 'package:flutter/material.dart';
-import '../models/meeting_request.dart'; // Adjust path if your model is named differently
+import '../lecturer_models/meeting_request.dart'; 
 
-// ==========================================
-// 1. THE CLICKABLE REQUEST CARD
-// ==========================================
+
 class RequestCard extends StatelessWidget {
   final RequestItem request;
   final VoidCallback? onApprove;
   final VoidCallback? onDecline;
-  final VoidCallback? onTap; // Added the onTap property
+  final VoidCallback? onTap; 
 
   const RequestCard({
     Key? key,
     required this.request,
     this.onApprove,
     this.onDecline,
-    this.onTap, // Initialize it here
+    this.onTap, 
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16.0),
-      // Wrap with Material and InkWell to get that nice ripple effect when clicked
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap, // Triggers the tap action
+          onTap: onTap, 
           borderRadius: BorderRadius.circular(16.0),
           child: Container(
             padding: const EdgeInsets.all(20.0),
@@ -44,7 +41,7 @@ class RequestCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // --- HEADER: Avatar, Name, ID, Badge ---
+                
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -90,7 +87,6 @@ class RequestCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
 
-                // --- DETAILS: Date, Time, Description ---
                 _buildDetailRow(Icons.calendar_today_outlined, request.date),
                 const SizedBox(height: 8),
                 _buildDetailRow(Icons.access_time_outlined, request.time),
@@ -109,7 +105,6 @@ class RequestCard extends StatelessWidget {
                   style: TextStyle(fontSize: 13, color: Colors.grey.shade400),
                 ),
 
-                // --- CONDITIONAL ACTION BUTTONS (Only for Pending) ---
                 if (request.status == RequestStatus.pending) ...[
                   const SizedBox(height: 20),
                   Row(
@@ -177,7 +172,6 @@ class RequestCard extends StatelessWidget {
     );
   }
 
-  // Helper for the dynamic status badge
   Widget _buildStatusBadge() {
     Color bgColor;
     Color textColor = Colors.white;
@@ -215,7 +209,6 @@ class RequestCard extends StatelessWidget {
     );
   }
 
-  // Helper for mock avatar colors based on initials
   Color _getAvatarColor() {
     if (request.status == RequestStatus.pending) {
       return request.initials == 'LA'
@@ -228,9 +221,7 @@ class RequestCard extends StatelessWidget {
   }
 }
 
-// ==========================================
-// 2. THE POPUP DIALOG
-// ==========================================
+
 class RequestDetailsDialog extends StatelessWidget {
   final RequestItem request;
   final VoidCallback onApprove;
@@ -256,7 +247,6 @@ class RequestDetailsDialog extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- HEADER ---
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -274,11 +264,9 @@ class RequestDetailsDialog extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // --- DETAILS ---
             _buildDetailSection('Student(s)', request.name),
             const SizedBox(height: 20),
 
-            // Replaced "Type" with "Student ID"
             _buildDetailSection('Student ID', request.id),
             const SizedBox(height: 20),
 

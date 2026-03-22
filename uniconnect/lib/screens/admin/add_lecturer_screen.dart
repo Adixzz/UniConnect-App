@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
-import '../../models/lecturer_model.dart';
+import '../../lecturer/lecturer_models/lecturer_model.dart';
 
 class AddLecturerScreen extends StatefulWidget {
   const AddLecturerScreen({super.key});

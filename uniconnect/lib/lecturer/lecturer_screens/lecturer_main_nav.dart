@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'lecturer_home.dart';
 import 'availability_screen.dart';
 import 'lecturer_request.dart';
-// 1. ADD THIS IMPORT
 import 'lecturer_settings.dart'; 
-import '../../models/lecturer_model.dart';
+import '../lecturer_models/lecturer_model.dart';
 
 class LecturerMainNavigation extends StatefulWidget {
   final LecturerModel currentLecturer;
@@ -27,7 +26,6 @@ class _LecturerMainNavigationState extends State<LecturerMainNavigation> {
       AvailabilityScreen(currentLecturer: widget.currentLecturer), 
       RequestsScreen(currentLecturer: widget.currentLecturer), 
       
-      // Updated this line to pass the model
       LecturerSettingsScreen(currentLecturer: widget.currentLecturer), 
     ];
   }

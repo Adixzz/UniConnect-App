@@ -4,7 +4,7 @@ class SummaryCard extends StatelessWidget {
   final String title, count;
   final IconData icon;
   final Color color;
-  final double cardWidth; // Add this parameter
+  final double cardWidth; 
 
   const SummaryCard({
     super.key, 
@@ -12,17 +12,17 @@ class SummaryCard extends StatelessWidget {
     required this.count, 
     required this.icon, 
     required this.color,
-    this.cardWidth = 110, // Default value
+    this.cardWidth = 110, 
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: cardWidth, // Use the dynamic width
+      width: cardWidth, 
       padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 10),
       decoration: BoxDecoration(
         color: Colors.white, 
-        borderRadius: BorderRadius.circular(20), // Slightly more rounded
+        borderRadius: BorderRadius.circular(20), 
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.03),
@@ -33,7 +33,6 @@ class SummaryCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Circular background for the icon as seen in your demo
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(

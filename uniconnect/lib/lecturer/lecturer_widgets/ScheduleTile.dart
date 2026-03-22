@@ -3,15 +3,15 @@ import 'package:flutter/material.dart';
 class ScheduleTile extends StatelessWidget {
   final String name;
   final String time;
-  final String type; // "Private" or "Group" (or Module name!)
-  final VoidCallback? onTap; // 1. Added the onTap property
+  final String type; 
+  final VoidCallback? onTap; 
 
   const ScheduleTile({
     super.key,
     required this.name,
     required this.time,
     required this.type,
-    this.onTap, // 2. Added to the constructor
+    this.onTap, 
   });
 
   @override
@@ -38,19 +38,18 @@ class ScheduleTile extends StatelessWidget {
           ),
         ],
       ),
-      // 3. Wrapped with Material and InkWell for a beautiful tap ripple effect!
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(
             15,
-          ), // Keeps the ripple inside the rounded edges
+          ), 
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
-                // 1. Icon Container (Blue circle from your design)
+                
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
@@ -65,7 +64,6 @@ class ScheduleTile extends StatelessWidget {
                 ),
                 const SizedBox(width: 16),
 
-                // 2. Name and Time Info
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -89,7 +87,6 @@ class ScheduleTile extends StatelessWidget {
                   ),
                 ),
 
-                // 3. Tag (Private/Group/Module Name)
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,

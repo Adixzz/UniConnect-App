@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/meeting_request.dart'; // Adjust path if needed
+import '../lecturer/lecturer_models/meeting_request.dart'; // Adjust path if needed
 
 class RequestDetailsDialog extends StatelessWidget {
   final RequestItem request;

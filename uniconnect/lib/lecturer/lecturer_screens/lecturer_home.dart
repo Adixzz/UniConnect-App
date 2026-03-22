@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../widgets/summary_card.dart';
-import '../../widgets/request_card.dart';
-import '../../widgets/ScheduleTile.dart';
-import '../../models/lecturer_model.dart'; // Adjust import if needed
-// Make sure this import points to where your RequestsScreen is located!
+import '../lecturer_widgets/summary_card.dart';
+import '../lecturer_widgets/request_card.dart';
+import '../lecturer_widgets/ScheduleTile.dart';
+import '../lecturer_models/lecturer_model.dart'; 
+
 import 'lecturer_request.dart';
 
 class LecturerHomeScreen extends StatefulWidget {
@@ -22,11 +22,10 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Fetch the total student count as soon as the screen loads
     _fetchTotalStudents();
   }
 
-  // STEP 1: Fetch total students from the 'users' collection
+  // Fetch total students from the 'users' collection
   Future<void> _fetchTotalStudents() async {
     try {
       QuerySnapshot snapshot = await FirebaseFirestore.instance
@@ -44,20 +43,17 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
     }
   }
 
-  // Helper method to get today's date in the exact format your database uses (e.g., "17/3/2026")
   String _getTodayDateString() {
     DateTime now = DateTime.now();
     return "${now.day}/${now.month}/${now.year}";
   }
 
-  // --- Helper method to parse time strings into sortable numbers (Minutes from midnight) ---
+  // parse time strings into sortable numbers 
   int _timeToMinutes(String timeStr) {
     try {
       timeStr = timeStr.trim().toUpperCase();
-      if (timeStr.isEmpty) return 9999; // Put empty times at the end
-
+      if (timeStr.isEmpty) return 9999; 
       bool isPM = timeStr.contains('PM');
-      // Remove everything except numbers and the colon
       String timePart = timeStr.replaceAll(RegExp(r'[^0-9:]'), '');
       List<String> parts = timePart.split(':');
 
@@ -66,12 +62,12 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
       int hours = int.parse(parts[0]);
       int minutes = int.parse(parts[1]);
 
-      if (isPM && hours != 12) hours += 12; // Convert PM to 24-hour time
-      if (!isPM && hours == 12) hours = 0; // Handle 12:00 AM as midnight
+      if (isPM && hours != 12) hours += 12; 
+      if (!isPM && hours == 12) hours = 0; 
 
-      return hours * 60 + minutes; // Return total minutes since midnight
+      return hours * 60 + minutes; 
     } catch (e) {
-      return 9999; // If format is weird, push to the bottom of the list
+      return 9999; 
     }
   }
 
@@ -82,24 +78,21 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FB),
       body: SafeArea(
-        // STEP 2: The StreamBuilder listens to the 'meetings' collection live!
         child: StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
               .collection('meetings')
               .where('lecturerUid', isEqualTo: widget.currentLecturer.uid)
               .snapshots(),
           builder: (context, snapshot) {
-            // If the database is loading, show a little spinner
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
 
-            // If there's an error
             if (snapshot.hasError) {
               return const Center(child: Text("Something went wrong"));
             }
 
-            // STEP 3: Organize the data!
+            // Organize the data!
             List<QueryDocumentSnapshot> allMeetings = snapshot.data?.docs ?? [];
 
             List<QueryDocumentSnapshot> pendingRequests = allMeetings.where((
@@ -111,11 +104,9 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
             List<QueryDocumentSnapshot> todaysSchedule = allMeetings.where((
               doc,
             ) {
-              // Assuming you want to show "Accepted" or "Scheduled" meetings for today
               return doc['date'] == todayString && doc['status'] == 'Accepted';
             }).toList();
 
-            // --- Sort Today's Schedule chronologically ---
             todaysSchedule.sort((a, b) {
               Map<String, dynamic> dataA = a.data() as Map<String, dynamic>;
               Map<String, dynamic> dataB = b.data() as Map<String, dynamic>;
@@ -125,7 +116,7 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
 
               return timeA.compareTo(
                 timeB,
-              ); // Sorts smallest to largest (morning to night)
+              ); 
             });
 
             return SingleChildScrollView(
@@ -143,14 +134,13 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
                   ),
                   const SizedBox(height: 25),
 
-                  // STEP 4: Plug the live counts into your Summary Cards
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       SummaryCard(
                         title: "Today",
                         count:
-                            "${todaysSchedule.length}", // Live count of today's meetings
+                            "${todaysSchedule.length}", 
                         icon: Icons.calendar_today,
                         color: Colors.blue,
                         cardWidth: 120,
@@ -158,7 +148,7 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
                       SummaryCard(
                         title: "Pending",
                         count:
-                            "${pendingRequests.length}", // Live count of pending requests
+                            "${pendingRequests.length}", 
                         icon: Icons.error_outline,
                         color: Colors.orange,
                         cardWidth: 120,
@@ -166,7 +156,7 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
                       SummaryCard(
                         title: "Students",
                         count:
-                            "$_totalStudents", // Count fetched from initState
+                            "$_totalStudents", 
                         icon: Icons.people_outline,
                         color: Colors.green,
                         cardWidth: 120,
@@ -175,7 +165,7 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
                   ),
                   const SizedBox(height: 30),
 
-                  // STEP 5: Display Today's Schedule
+                  
                   const Text(
                     "Today's Schedule",
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -188,12 +178,10 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
                       style: TextStyle(color: Colors.grey),
                     ),
 
-                  // Loop through today's meetings and build a ScheduleTile for each
                   ...todaysSchedule.map((doc) {
                     Map<String, dynamic> data =
                         doc.data() as Map<String, dynamic>;
 
-                    // We use a FutureBuilder to look up the student's name using their Uid
                     return FutureBuilder<DocumentSnapshot>(
                       future: FirebaseFirestore.instance
                           .collection('users')
@@ -223,11 +211,11 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
                         );
                       },
                     );
-                  }), // Note: The .toList() is implicitly handled by the spread operator (...)
+                  }), 
 
                   const SizedBox(height: 30),
 
-                  // STEP 6: Display Pending Requests
+                  // Display Pending Requests
                   const Text(
                     "Pending Requests",
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -240,7 +228,6 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
                       style: TextStyle(color: Colors.grey),
                     ),
 
-                  // Loop through pending requests and build a RequestActionCard for each
                   ...pendingRequests.map((doc) {
                     Map<String, dynamic> data =
                         doc.data() as Map<String, dynamic>;
@@ -262,11 +249,9 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
                             name: studentName,
                             reason: data['reason'] ?? 'No reason provided',
 
-                            // --- PASSING THE TIME TO THE CARD ---
                             time:
                                 "${data['date'] ?? 'No Date'} at ${data['time'] ?? 'No Time'}",
 
-                            // --- LOGIC FOR BUTTONS ---
                             onApprove: () async {
                               try {
                                 await FirebaseFirestore.instance

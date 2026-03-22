@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../widgets/lecturer_request.dart';
-import '../../models/meeting_request.dart';
-import '../../models/lecturer_model.dart';
+import '../lecturer_widgets/lecturer_request.dart';
+import '../lecturer_models/meeting_request.dart';
+import '../lecturer_models/lecturer_model.dart';
 
 class RequestsScreen extends StatefulWidget {
   final LecturerModel currentLecturer;
@@ -77,7 +77,6 @@ class _RequestsScreenState extends State<RequestsScreen> {
 
           List<QueryDocumentSnapshot> allDocs = snapshot.data?.docs ?? [];
 
-          // 1. GENERATE FULL DATE LIST (Always based on allDocs)
           Set<String> dateSet = {"All"};
           for (var doc in allDocs) {
             final data = doc.data() as Map<String, dynamic>;
@@ -85,12 +84,10 @@ class _RequestsScreenState extends State<RequestsScreen> {
           }
           List<String> availableDates = dateSet.toList()..sort();
 
-          // --- 2. CRITICAL FIX: APPLY DATE FILTER FIRST ---
           List<QueryDocumentSnapshot> dateFilteredDocs = _selectedDateFilter == "All"
               ? allDocs
               : allDocs.where((d) => d['date'] == _selectedDateFilter).toList();
 
-          // 3. CATEGORIZE BASED ON THE FILTERED DATA
           List<QueryDocumentSnapshot> pendingDocs = dateFilteredDocs
               .where((d) => d['status'] == 'Pending').toList();
           List<QueryDocumentSnapshot> approvedDocs = dateFilteredDocs
@@ -98,7 +95,6 @@ class _RequestsScreenState extends State<RequestsScreen> {
           List<QueryDocumentSnapshot> declinedDocs = dateFilteredDocs
               .where((d) => d['status'] == 'Declined').toList();
 
-          // Determine which list to show in the ListView
           List<QueryDocumentSnapshot> currentDocs = _selectedTabIndex == 0
               ? pendingDocs
               : (_selectedTabIndex == 1 ? approvedDocs : declinedDocs);

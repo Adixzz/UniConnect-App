@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class RequestActionCard extends StatelessWidget {
   final String name;
   final String reason;
-  final String time; // 1. Added the time property
+  final String time; 
   final VoidCallback? onApprove;
   final VoidCallback? onDecline;
 
@@ -11,7 +11,7 @@ class RequestActionCard extends StatelessWidget {
     super.key,
     required this.name,
     required this.reason,
-    required this.time, // 2. Required it in the constructor
+    required this.time, 
     this.onApprove,
     this.onDecline,
   });
@@ -35,7 +35,7 @@ class RequestActionCard extends StatelessWidget {
         children: [
           ListTile(
             contentPadding:
-                EdgeInsets.zero, // Removes default padding so it aligns nicely
+                EdgeInsets.zero, 
             leading: CircleAvatar(
               backgroundColor: Colors.blue.shade100,
               child: const Icon(Icons.person, color: Colors.blue),
@@ -44,7 +44,6 @@ class RequestActionCard extends StatelessWidget {
               name,
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            // 3. Updated subtitle to show BOTH the reason and the new time format
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 4.0),
               child: Column(
@@ -81,7 +80,6 @@ class RequestActionCard extends StatelessWidget {
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
-                    // Rounded edges for the buttons to match your UI
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
