@@ -107,6 +107,7 @@ class _ClubFormScreenState extends State<ClubFormScreen> {
           presidentID: _presidentUid!,
           members: widget.existingClub!.members,
           pendingRequests: widget.existingClub!.pendingRequests,
+          requestReasons: widget.existingClub!.requestReasons,
         ));
         _showSnackBar("Club updated successfully!");
       } else {
@@ -121,6 +122,7 @@ class _ClubFormScreenState extends State<ClubFormScreen> {
           presidentID: _presidentUid!,
           members: [],
           pendingRequests: [],
+          requestReasons: {},
         ));
         _showSnackBar("Club added successfully!");
       }

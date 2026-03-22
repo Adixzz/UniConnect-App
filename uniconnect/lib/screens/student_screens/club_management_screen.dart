@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/club_model.dart';
-import '../../services/student_database_service.dart';
 
 class ClubManagementScreen extends StatefulWidget {
   final ClubModel club;
@@ -12,15 +11,15 @@ class ClubManagementScreen extends StatefulWidget {
 }
 
 class _ClubManagementScreenState extends State<ClubManagementScreen> {
-  final Color primaryGreen = const Color(0xFF10B981); // Consistent Green Theme
+  final Color primaryGreen = const Color(0xFF10B981);
 
-
-  // Move student from pendingRequests to members
+  // --- BACKEND ACTIONS ---
   Future<void> _approveMember(String studentUid) async {
     try {
       await FirebaseFirestore.instance.collection('clubs').doc(widget.club.clubId).update({
         'pendingRequests': FieldValue.arrayRemove([studentUid]),
         'members': FieldValue.arrayUnion([studentUid]),
+        'requestReasons.$studentUid': FieldValue.delete(), // Clean up reason from DB
       });
       _showSnackBar("Member Approved!");
     } catch (e) {
@@ -28,15 +27,14 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
     }
   }
 
-  // Remove student from pendingRequests
   Future<void> _rejectRequest(String studentUid) async {
     await FirebaseFirestore.instance.collection('clubs').doc(widget.club.clubId).update({
       'pendingRequests': FieldValue.arrayRemove([studentUid]),
+      'requestReasons.$studentUid': FieldValue.delete(), // Clean up reason from DB
     });
     _showSnackBar("Request Rejected.");
   }
 
-  // Remove current member
   Future<void> _removeMember(String studentUid) async {
     await FirebaseFirestore.instance.collection('clubs').doc(widget.club.clubId).update({
       'members': FieldValue.arrayRemove([studentUid]),
@@ -91,20 +89,22 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
         
         List<String> requests = List<String>.from(snapshot.data!.get('pendingRequests') ?? []);
 
-        if (requests.isEmpty) {
-          return _buildEmptyState("No pending join requests.");
-        }
+        if (requests.isEmpty) return _buildEmptyState("No pending join requests.");
 
         return ListView.builder(
           padding: const EdgeInsets.all(16),
           itemCount: requests.length,
-          itemBuilder: (context, index) => _fetchUserCard(requests[index], isRequest: true),
+          itemBuilder: (context, index) => _fetchUserCard(
+            requests[index], 
+            isRequest: true, 
+            liveClub: ClubModel.fromMap(snapshot.data!.id, snapshot.data!.data() as Map<String, dynamic>)
+          ),
         );
       },
     );
   }
 
-  // 2. MEMBERS MANAGEMENT TAB
+  // 2. MEMBERS TAB
   Widget _buildMembersManagementTab() {
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance.collection('clubs').doc(widget.club.clubId).snapshots(),
@@ -112,88 +112,104 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
         
         List<String> members = List<String>.from(snapshot.data!.get('members') ?? []);
-        // Don't show the president in the "remove" list
-        members.remove(widget.club.presidentID);
+        members.remove(widget.club.presidentID); // Protect president from deletion
 
-        if (members.isEmpty) {
-          return _buildEmptyState("No other members to manage.");
-        }
+        if (members.isEmpty) return _buildEmptyState("No other members to manage.");
 
         return ListView.builder(
           padding: const EdgeInsets.all(16),
           itemCount: members.length,
-          itemBuilder: (context, index) => _fetchUserCard(members[index], isRequest: false),
+          itemBuilder: (context, index) => _fetchUserCard(
+            members[index], 
+            isRequest: false,
+            liveClub: ClubModel.fromMap(snapshot.data!.id, snapshot.data!.data() as Map<String, dynamic>)
+          ),
         );
       },
     );
   }
 
- Widget _fetchUserCard(String uid, {required bool isRequest}) {
-  return FutureBuilder<DocumentSnapshot>(
-    future: FirebaseFirestore.instance.collection('users').doc(uid).get(),
-    builder: (context, snapshot) {
-      // 1. Show a loading state while fetching the user
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return const ListTile(title: Text("Loading user data..."));
-      }
+  // USER LOOKUP CARD
+  Widget _fetchUserCard(String uid, {required bool isRequest, required ClubModel liveClub}) {
+    if (uid.trim().isEmpty) return const SizedBox(); // Prevent crash on empty strings
 
-      // 2. CRITICAL FIX: Verify the document actually exists
-      if (!snapshot.hasData || !snapshot.data!.exists) {
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance.collection('users').doc(uid).get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) return const ListTile(title: Text("Loading..."));
+
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return _buildGhostUserCard(uid); // Cleanup card for deleted users
+        }
+
+        String name = snapshot.data!.get('name') ?? "Unknown";
+        String reason = liveClub.requestReasons[uid] ?? "No reason provided.";
+
         return Card(
           elevation: 0,
           margin: const EdgeInsets.only(bottom: 12),
-          color: Colors.orange[50],
+          color: Colors.grey[50],
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          child: ListTile(
-            leading: const Icon(Icons.warning_amber_rounded, color: Colors.orange),
-            title: Text("Invalid User ID: $uid", style: const TextStyle(fontSize: 14)),
-            subtitle: const Text("This ID does not exist in the users collection."),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete_forever, color: Colors.red),
-              onPressed: () => _rejectRequest(uid), // Allows admin to clean up bad IDs
-            ),
-          ),
-        );
-      }
-
-      // 3. If it exists, proceed with your original design
-      String name = snapshot.data!.get('name') ?? "Unknown";
-
-      return Card(
-        elevation: 0,
-        margin: const EdgeInsets.only(bottom: 12),
-        color: Colors.grey[50],
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          leading: const CircleAvatar(child: Icon(Icons.person)),
-          title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-          subtitle: isRequest 
-            ? const Text("Wants to join the club")
-            : const Text("Current Member"),
-          trailing: isRequest 
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
+          child: isRequest 
+            ? ExpansionTile( // ExpansionTile allows the President to click to read the reason cleanly
+                leading: const CircleAvatar(child: Icon(Icons.person)),
+                title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text("Wants to join the club", style: TextStyle(color: Colors.grey)),
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.check_circle, color: Colors.green),
-                    onPressed: () => _approveMember(uid),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text("Reason: $reason", style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.black87)),
+                    ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.cancel, color: Colors.redAccent),
-                    onPressed: () => _rejectRequest(uid),
-                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => _rejectRequest(uid), 
+                        icon: const Icon(Icons.cancel, color: Colors.redAccent),
+                        label: const Text("Reject", style: TextStyle(color: Colors.redAccent))
+                      ),
+                      TextButton.icon(
+                        onPressed: () => _approveMember(uid), 
+                        icon: const Icon(Icons.check_circle, color: Colors.green),
+                        label: const Text("Approve", style: TextStyle(color: Colors.green))
+                      ),
+                    ],
+                  )
                 ],
               )
-            : IconButton(
-                icon: const Icon(Icons.person_remove, color: Colors.redAccent),
-                onPressed: () => _removeMember(uid),
+            : ListTile( // Standard view for already accepted members
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                leading: const CircleAvatar(child: Icon(Icons.person)),
+                title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text("Current Member"),
+                trailing: IconButton(
+                  icon: const Icon(Icons.person_remove, color: Colors.redAccent),
+                  onPressed: () => _removeMember(uid),
+                ),
               ),
+        );
+      },
+    );
+  }
+
+  Widget _buildGhostUserCard(String uid) {
+    return Card(
+      elevation: 0,
+      color: Colors.orange[50],
+      child: ListTile(
+        leading: const Icon(Icons.warning, color: Colors.orange),
+        title: const Text("Invalid User"),
+        subtitle: const Text("Account deleted or invalid UID."),
+        trailing: IconButton(
+          icon: const Icon(Icons.delete, color: Colors.red),
+          onPressed: () => _rejectRequest(uid),
         ),
-      );
-    },
-  );
-}
+      ),
+    );
+  }
 
   Widget _buildEmptyState(String msg) {
     return Center(

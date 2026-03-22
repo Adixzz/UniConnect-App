@@ -1,50 +1,103 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../models/club_model.dart'; // Adjust paths as needed
+import '../../models/club_model.dart';
 import 'club_management_screen.dart';
+import 'create_announcement_screen.dart';
+import 'package:intl/intl.dart';
 
 class ClubDetailsScreen extends StatelessWidget {
   final ClubModel club;
   const ClubDetailsScreen({super.key, required this.club});
 
+  // --- SHOW DIALOG TO GET REASON ---
+  Future<void> _showJoinDialog(BuildContext context, String currentUid) async {
+    final TextEditingController reasonController = TextEditingController();
+    
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text("Join Request", style: TextStyle(fontWeight: FontWeight.bold)),
+        content: TextField(
+          controller: reasonController,
+          decoration: const InputDecoration(
+            hintText: "Why would you like to join this club?",
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 3,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), 
+            child: const Text("Cancel", style: TextStyle(color: Colors.grey))
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+            onPressed: () {
+              if (reasonController.text.isNotEmpty) {
+                _requestToJoin(context, currentUid, reasonController.text);
+                Navigator.pop(context); // Close dialog
+              }
+            },
+            child: const Text("Submit", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   // --- BACKEND: REQUEST TO JOIN ---
-  Future<void> _requestToJoin(BuildContext context, String currentUid) async {
+  Future<void> _requestToJoin(BuildContext context, String currentUid, String reason) async {
     try {
       await FirebaseFirestore.instance.collection('clubs').doc(club.clubId).update({
         'pendingRequests': FieldValue.arrayUnion([currentUid]),
+        'requestReasons.$currentUid': reason, // Maps the reason to the user's UID
       });
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Join request sent successfully!")),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Join request sent successfully!")));
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e")),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
+    }
+  }
+
+  // --- BACKEND: LEAVE CLUB ---
+  Future<void> _leaveClub(BuildContext context, String currentUid) async {
+    try {
+      await FirebaseFirestore.instance.collection('clubs').doc(club.clubId).update({
+        'members': FieldValue.arrayRemove([currentUid]),
+      });
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("You have left the club.")));
+      }
+    } catch (e) {
+       if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error leaving club: $e")));
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryGreen = Color(0xFF10B981); //
+    const Color primaryGreen = Color(0xFF10B981);
     final String currentUid = FirebaseAuth.instance.currentUser?.uid ?? "";
 
-    // Use StreamBuilder so data stays "Live" when buttons are clicked
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance.collection('clubs').doc(club.clubId).snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
-        // Update local club data with live data from Firestore
         final liveClub = ClubModel.fromMap(snapshot.data!.id, snapshot.data!.data() as Map<String, dynamic>);
+        
+        final bool isMember = liveClub.members.contains(currentUid);
         final bool isPresident = liveClub.presidentID == currentUid;
+        final bool canSeeAlerts = isMember || isPresident; // ACCESS CONTROL
 
         return DefaultTabController(
-          length: 2,
+          length: canSeeAlerts ? 2 : 1, // Dynamically hide the Alerts tab
           child: Scaffold(
             backgroundColor: Colors.white,
             appBar: AppBar(
@@ -56,31 +109,30 @@ class ClubDetailsScreen extends StatelessWidget {
               ),
               title: Text(liveClub.name, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
               actions: [
-                // Manage button only for President
                 if (isPresident)
                   Padding(
                     padding: const EdgeInsets.only(right: 8.0),
                     child: TextButton.icon(
-                      onPressed: () => Navigator.push(
-                        context, 
-                        MaterialPageRoute(builder: (context) => ClubManagementScreen(club: liveClub))
-                      ),
+                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ClubManagementScreen(club: liveClub))),
                       icon: const Icon(Icons.security, size: 18, color: primaryGreen),
                       label: const Text("Manage", style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold)),
                     ),
                   ),
               ],
-              bottom: const TabBar(
+              bottom: TabBar(
                 labelColor: primaryGreen,
                 unselectedLabelColor: Colors.grey,
                 indicatorColor: primaryGreen,
-                tabs: [Tab(text: "Info"), Tab(text: "Alerts")],
+                tabs: [
+                  const Tab(text: "Info"),
+                  if (canSeeAlerts) const Tab(text: "Alerts"),
+                ],
               ),
             ),
             body: TabBarView(
               children: [
                 _buildInfoAndMembersTab(context, liveClub, currentUid, primaryGreen),
-                _buildAlertsTab(liveClub, isPresident, primaryGreen),
+                if (canSeeAlerts) _buildAlertsTab(context, liveClub, isPresident, primaryGreen),
               ],
             ),
           ),
@@ -89,7 +141,6 @@ class ClubDetailsScreen extends StatelessWidget {
     );
   }
 
-  // 1. CONSOLIDATED INFO & MEMBERS TAB
   Widget _buildInfoAndMembersTab(BuildContext context, ClubModel liveClub, String currentUid, Color themeColor) {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
@@ -122,66 +173,137 @@ class ClubDetailsScreen extends StatelessWidget {
               return _fetchMemberTile(uid);
             }).toList(),
 
-          // DYNAMIC JOIN BUTTON
-          _buildJoinButton(context, liveClub, currentUid, themeColor),
+          // ACTION BUTTONS
+          _buildActionButtons(context, liveClub, currentUid, themeColor),
         ],
       ),
     );
   }
 
-  // 2. JOIN BUTTON LOGIC
-  Widget _buildJoinButton(BuildContext context, ClubModel liveClub, String currentUid, Color themeColor) {
+  Widget _buildActionButtons(BuildContext context, ClubModel liveClub, String currentUid, Color themeColor) {
     final bool isMember = liveClub.members.contains(currentUid);
     final bool hasRequested = liveClub.pendingRequests.contains(currentUid);
     final bool isPresident = liveClub.presidentID == currentUid;
 
-    if (isPresident || isMember) return const SizedBox();
+    if (isPresident) return const SizedBox(); // Presidents manage the club from the top right button
 
     return Padding(
       padding: const EdgeInsets.only(top: 32.0),
       child: SizedBox(
         width: double.infinity,
         height: 50,
-        child: ElevatedButton(
-          onPressed: hasRequested ? null : () => _requestToJoin(context, currentUid),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: hasRequested ? Colors.grey : themeColor,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          child: Text(
-            hasRequested ? "Request Pending" : "Request to Join Club",
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-        ),
+        child: isMember 
+          ? OutlinedButton.icon(
+              onPressed: () => _leaveClub(context, currentUid),
+              icon: const Icon(Icons.exit_to_app, color: Colors.redAccent),
+              label: const Text("Leave Club", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.redAccent),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            )
+          : ElevatedButton(
+              onPressed: hasRequested ? null : () => _showJoinDialog(context, currentUid),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: hasRequested ? Colors.grey : themeColor,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(
+                hasRequested ? "Request Pending" : "Request to Join Club",
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
       ),
     );
   }
 
-  // 3. ALERTS TAB
-  Widget _buildAlertsTab(ClubModel liveClub, bool isPresident, Color themeColor) {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        children: [
-          if (isPresident)
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () { /* Logic for announcement */ },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: themeColor,
-                  padding: const EdgeInsets.all(16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                icon: const Icon(Icons.add_alert, color: Colors.white),
-                label: const Text("Create an Announcement", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+Widget _buildAlertsTab(BuildContext context, ClubModel liveClub, bool isPresident, Color themeColor) {
+  return Column(
+    children: [
+      if (isPresident)
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => Navigator.push(
+                context, 
+                MaterialPageRoute(builder: (context) => CreateAnnouncementScreen(clubId: liveClub.clubId))
               ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: themeColor,
+                padding: const EdgeInsets.all(16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.add_alert, color: Colors.white),
+              label: const Text("Create an Announcement", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
-          const Expanded(child: Center(child: Text("No Alerts yet.", style: TextStyle(color: Colors.grey)))),
-        ],
+          ),
+        ),
+      
+      Expanded(
+        child: StreamBuilder<QuerySnapshot>(
+          // Fetching from the new subcollection
+          stream: FirebaseFirestore.instance
+              .collection('clubs')
+              .doc(liveClub.clubId)
+              .collection('announcements')
+              .orderBy('createdAt', descending: true)
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+            
+            if (snapshot.data!.docs.isEmpty) {
+              return const Center(child: Text("No Alerts yet.", style: TextStyle(color: Colors.grey)));
+            }
+
+            return ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: snapshot.data!.docs.length,
+              itemBuilder: (context, index) {
+                final data = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+                final bool isEvent = data['type'] == 'Event';
+
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  elevation: 0,
+                  color: isEvent ? Colors.blue[50] : Colors.grey[100],
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.all(16),
+                    leading: CircleAvatar(
+                      backgroundColor: isEvent ? Colors.blue : themeColor,
+                      child: Icon(isEvent ? Icons.event : Icons.campaign, color: Colors.white),
+                    ),
+                    title: Text(isEvent ? "Upcoming Event" : "Notice", style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 4),
+                        Text(data['message'] ?? ''),
+                        if (isEvent) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              const Icon(Icons.calendar_today, size: 14, color: Colors.blue),
+                              const SizedBox(width: 4),
+                              Text("${data['eventTime']} on ${DateFormat('MMM d').format((data['eventDate'] as Timestamp).toDate())}", 
+                                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.blue)),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
       ),
-    );
-  }
+    ],
+  );
+}
 
   // --- HELPERS ---
   Widget _sectionHeader(String title) {

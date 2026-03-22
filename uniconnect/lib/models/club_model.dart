@@ -7,6 +7,7 @@ class ClubModel {
   final String presidentID;
   final List<String> members;
   final List<String> pendingRequests;
+  final Map<String, dynamic> requestReasons;
 
   ClubModel({
     required this.clubId,
@@ -17,6 +18,7 @@ class ClubModel {
     required this.presidentID,
     required this.members,
     required this.pendingRequests,
+    required this.requestReasons,
   });
 
   Map<String, dynamic> toMap() {
@@ -29,6 +31,7 @@ class ClubModel {
       'presidentID': presidentID,
       'members': members,
       'pendingRequests': pendingRequests,
+      'requestReasons': requestReasons,
 
       'createdAt': DateTime.now().toIso8601String(),
     };
@@ -43,6 +46,7 @@ class ClubModel {
       president: map['president'] ?? '',
       presidentID: map['presidentID'] ?? '',
       members: List<String>.from(map['members'] ?? []),
+      requestReasons: Map<String, dynamic>.from(map['requestReasons'] ?? {}),
       pendingRequests: List<String>.from(map['pendingRequests'] ?? []),
 
     );
