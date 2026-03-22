@@ -73,8 +73,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
   }
 
-  // 2. DYNAMIC STATS (Meetings & Clubs)
-  Widget _buildStatsRow() {
+ Widget _buildStatsRow() {
     return Row(
       children: [
         Expanded(
@@ -88,11 +87,16 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         ),
         const SizedBox(width: 16),
         Expanded(
-          child: FutureBuilder<List>(
-            future: _dbService.getClubs(),
+          // UPDATED: Now queries for clubs where the user is a member
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('clubs')
+                .where('members', arrayContains: currentUid) //
+                .snapshots(),
             builder: (context, snapshot) {
-              int count = snapshot.hasData ? snapshot.data!.length : 0;
-              return _statCard("Clubs", count.toString(), Icons.groups, Colors.green);
+              // Count only the clubs returned by the filtered query
+              int joinedCount = snapshot.hasData ? snapshot.data!.docs.length : 0;
+              return _statCard("Joined Clubs", joinedCount.toString(), Icons.groups, Colors.green);
             },
           ),
         ),
