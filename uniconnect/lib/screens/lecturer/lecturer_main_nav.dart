@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'lecturer_home.dart';
 import 'availability_screen.dart';
-
+import 'lecturer_request.dart';
+// 1. ADD THIS IMPORT
+import 'lecturer_settings.dart'; 
+import '../../models/lecturer_model.dart';
 
 class LecturerMainNavigation extends StatefulWidget {
-  const LecturerMainNavigation({super.key});
+  final LecturerModel currentLecturer;
+
+  const LecturerMainNavigation({super.key, required this.currentLecturer});
 
   @override
   State<LecturerMainNavigation> createState() => _LecturerMainNavigationState();
@@ -12,14 +17,20 @@ class LecturerMainNavigation extends StatefulWidget {
 
 class _LecturerMainNavigationState extends State<LecturerMainNavigation> {
   int _selectedIndex = 0;
+  late List<Widget> _screens;
 
-  // List of screens to switch between
-  final List<Widget> _screens = [
-    const LecturerHomeScreen(),     // Index 0
-    const AvailabilityScreen(), // Index 1
-    const Center(child: Text("Requests Screen")), // Index 2 (Placeholder)
-    const Center(child: Text("Settings Screen")), // Index 3 (Placeholder)
-  ];
+ @override
+  void initState() {
+    super.initState();
+    _screens = [
+      LecturerHomeScreen(currentLecturer: widget.currentLecturer), 
+      AvailabilityScreen(currentLecturer: widget.currentLecturer), 
+      RequestsScreen(currentLecturer: widget.currentLecturer), 
+      
+      // Updated this line to pass the model
+      LecturerSettingsScreen(currentLecturer: widget.currentLecturer), 
+    ];
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -30,19 +41,24 @@ class _LecturerMainNavigationState extends State<LecturerMainNavigation> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // The body changes based on which icon is tapped
-      body: _screens[_selectedIndex], 
+      body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex, // Highlights the correct icon
-        onTap: _onItemTapped,         // Changes the screen
+        currentIndex: _selectedIndex, 
+        onTap: _onItemTapped, 
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFF1565C0), // Matches your primary blue
+        selectedItemColor: const Color(0xFF1565C0), 
         unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Availability'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_month),
+            label: 'Availability',
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.group), label: 'Requests'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Settings',
+          ),
         ],
       ),
     );

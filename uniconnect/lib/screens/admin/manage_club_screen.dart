@@ -31,7 +31,6 @@ class _ClubManageScreenState extends State<ClubManageScreen> {
   }
 
   Future<void> _deleteClub(String clubId) async {
-    // confirmation dialog before deleting
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -56,7 +55,7 @@ class _ClubManageScreenState extends State<ClubManageScreen> {
 
     await _dbService.deleteClub(clubId);
     _showSnackBar("Club deleted successfully");
-    _fetchClubs(); // refresh the list
+    _fetchClubs();
   }
 
   void _showSnackBar(String msg) =>

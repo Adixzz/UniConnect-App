@@ -1,117 +1,390 @@
 import 'package:flutter/material.dart';
-import 'package:table_calendar/table_calendar.dart';
-import 'package:intl/intl.dart'; // Required for better date formatting
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart'; 
+import '../../services/database_service.dart';
+import '../../models/lecturer_model.dart';
 
 class AvailabilityScreen extends StatefulWidget {
-  const AvailabilityScreen({super.key});
+  final LecturerModel currentLecturer;
+  const AvailabilityScreen({super.key, required this.currentLecturer});
 
   @override
   State<AvailabilityScreen> createState() => _AvailabilityScreenState();
 }
 
 class _AvailabilityScreenState extends State<AvailabilityScreen> {
-  CalendarFormat _calendarFormat = CalendarFormat.month;
-  DateTime _focusedDay = DateTime.now();
-  DateTime? _selectedDay = DateTime.now();
+  final DatabaseService _dbService = DatabaseService();
+  bool _isAvailable = true;
+  String _currentStatus = "Available";
+  bool _isAutoLocked = false; 
+  
+  List<Map<String, dynamic>> availableSlots = [];
+  List<String> uniqueDates = [];
+  String _selectedDate = "All";
+  bool _isLoadingSlots = true;
 
-  // Updated list to store slots with specific dates
-  final List<Map<String, String>> _mySlots = [
-    {
-      "time": "09:00 AM - 10:00 AM", 
-      "note": "Available for Project Viva",
-      "date": "19/3/2026"
-    },
-  ];
-
-  final _noteController = TextEditingController();
-  TimeOfDay _startTime = const TimeOfDay(hour: 9, minute: 0);
-  TimeOfDay _endTime = const TimeOfDay(hour: 10, minute: 0);
-
-  @override
-  void dispose() {
-    _noteController.dispose();
-    super.dispose();
+  // --- DYNAMIC URL HELPERS ---
+  // Converts standard "edit" URL to "export?format=csv" for data fetching
+  String get _exportUrl {
+    String baseUrl = widget.currentLecturer.timetableURL;
+    if (baseUrl.contains('/edit')) {
+      return baseUrl.split('/edit')[0] + '/export?format=csv';
+    }
+    return baseUrl;
   }
 
-  // 1. Professional Time Picker Sheet
-  void _showAddSlotSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-      ),
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom, 
-            left: 24, right: 24, top: 24
+  // Returns the standard URL for browser editing
+  Uri get _editUri => Uri.parse(widget.currentLecturer.timetableURL);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentStatus();
+    _fetchSpreadsheetSlots();
+  }
+
+  DateTime _parseTime(String timeStr, DateTime contextDate) {
+    try {
+      final parts = timeStr.trim().split(" ");
+      final hm = parts[0].split(".");
+      int hour = int.parse(hm[0]);
+      int min = int.parse(hm[1]);
+      if (parts[1].toUpperCase() == "PM" && hour != 12) hour += 12;
+      if (parts[1].toUpperCase() == "AM" && hour == 12) hour = 0;
+      return DateTime(contextDate.year, contextDate.month, contextDate.day, hour, min);
+    } catch (e) {
+      return DateTime(contextDate.year, contextDate.month, contextDate.day, 0, 0);
+    }
+  }
+
+  void _loadCurrentStatus() async {
+    try {
+      final doc = await _dbService.getUserData(widget.currentLecturer.uid);
+      if (!mounted) return;
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data() as Map<String, dynamic>;
+        setState(() {
+          if (!_isAutoLocked) {
+            _currentStatus = data['availability'] ?? "Available";
+            _isAvailable = _currentStatus == "Available";
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading status: $e");
+    }
+  }
+
+  void _jumpToToday() {
+    String todayStr = DateFormat("MMM d").format(DateTime.now()).replaceAll(' ', '');
+    if (uniqueDates.contains(todayStr)) {
+      if (mounted) setState(() => _selectedDate = todayStr);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("No slots synced for today ($todayStr).")),
+      );
+    }
+  }
+
+  Future<void> _fetchSpreadsheetSlots() async {
+    if (widget.currentLecturer.timetableURL.isEmpty) {
+      if (mounted) setState(() => _isLoadingSlots = false);
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() => _isLoadingSlots = true);
+    
+    try {
+      // USES DYNAMIC EXPORT URL
+      final response = await http.get(Uri.parse(_exportUrl));
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
+        final data = response.body;
+        List<List<String>> sheet = data.split("\n").map((row) => row.split(",")).toList();
+        if (sheet.isEmpty || sheet[0].length < 2) return;
+
+        List<String> dates = sheet[0]; 
+        List<Map<String, dynamic>> fetchedSlots = [];
+        Set<String> dateSet = {"All"};
+
+        DateTime now = DateTime.now();
+        DateTime todayMidnight = DateTime(now.year, now.month, now.day);
+
+        Set<int> weekendColumnIndices = {};
+        for (var row in sheet) {
+          for (int j = 0; j < row.length; j++) {
+            if (row[j].toUpperCase().contains("WEEKEND")) {
+              weekendColumnIndices.add(j);
+            }
+          }
+        }
+
+        String todayStr = DateFormat("MMM d").format(now).replaceAll(' ', '');
+        int todayCol = -1;
+        for (int j = 0; j < dates.length; j++) {
+          if (dates[j].trim().replaceAll(' ', '') == todayStr) {
+            todayCol = j;
+            break;
+          }
+        }
+
+        bool isWeekend = (todayCol != -1 && weekendColumnIndices.contains(todayCol));
+        bool currentlyInLecture = false;
+        String lectureName = "";
+
+        if (!isWeekend && todayCol != -1) {
+          for (int i = 1; i < sheet.length; i++) {
+            List<String> row = sheet[i];
+            if (row.length < 2) continue;
+            DateTime start = _parseTime(row[0], now);
+            DateTime end = _parseTime(row[1], now);
+            
+            if (now.isAfter(start.subtract(const Duration(seconds: 1))) && now.isBefore(end)) {
+              String content = (todayCol < row.length) ? row[todayCol].trim() : "";
+              if (content.isNotEmpty) {
+                currentlyInLecture = true;
+                lectureName = content;
+              }
+              break;
+            }
+          }
+        }
+
+        for (int i = 1; i < sheet.length; i++) {
+          List<String> row = sheet[i];
+          if (row.length < 2) continue;
+          String startTime = row[0].trim();
+          String endTime = row[1].trim();
+
+          for (int j = 2; j < dates.length; j++) {
+            String dateString = dates[j].trim();
+            if (dateString.isEmpty) continue; 
+
+            bool isPastDay = false;
+            try {
+              String cleanDate = dateString.replaceAllMapped(
+                RegExp(r'([a-zA-Z]+)(\d+)'), 
+                (match) => '${match.group(1)} ${match.group(2)}'
+              );
+              DateTime parsedDate = DateFormat("MMM d").parse(cleanDate);
+              DateTime fullDate = DateTime(now.year, parsedDate.month, parsedDate.day);
+              if (fullDate.isBefore(todayMidnight)) isPastDay = true;
+            } catch (e) {}
+
+            if (isPastDay || weekendColumnIndices.contains(j)) continue;
+
+            String cellValue = (j < row.length) ? row[j].trim() : "";
+            if (cellValue.isEmpty) {
+              fetchedSlots.add({"date": dateString, "time": "$startTime - $endTime"});
+              dateSet.add(dateString);
+            }
+          }
+        }
+
+        if (mounted) {
+          setState(() {
+            availableSlots = fetchedSlots;
+            uniqueDates = dateSet.toList()..sort();
+            _isLoadingSlots = false;
+            _isAutoLocked = isWeekend || currentlyInLecture;
+
+            if (isWeekend) {
+              _currentStatus = "Not Available (Weekend)";
+              _isAvailable = false;
+              _updateFirestoreAvailability(_currentStatus);
+            } else if (currentlyInLecture) {
+              _currentStatus = "In a Lecture ($lectureName)";
+              _isAvailable = false;
+              _updateFirestoreAvailability(_currentStatus);
+            } else {
+              _loadCurrentStatus(); 
+            }
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Sync Error: $e");
+      if (mounted) setState(() => _isLoadingSlots = false);
+    }
+  }
+
+  Future<void> _updateFirestoreAvailability(String status) async {
+    try {
+      final query = await FirebaseFirestore.instance
+          .collection('lecturers')
+          .where('staffId', isEqualTo: widget.currentLecturer.staffId)
+          .get();
+      if (query.docs.isNotEmpty) {
+        await query.docs.first.reference.update({'availability': status});
+      }
+    } catch (e) {
+      debugPrint("Firestore Error: $e");
+    }
+  }
+
+  void _toggleStatus(bool value) async {
+    if (_isAutoLocked) return;
+    String newStatus = value ? "Available" : "Not Available";
+    if (mounted) {
+      setState(() {
+        _isAvailable = value;
+        _currentStatus = newStatus;
+      });
+    }
+    _updateFirestoreAvailability(newStatus);
+  }
+
+  Future<void> _openSpreadsheet() async {
+    // USES DYNAMIC EDIT URI
+    if (!await launchUrl(_editUri)) throw Exception('Could not launch $_editUri');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filteredList = _selectedDate == "All" 
+        ? availableSlots 
+        : availableSlots.where((s) => s['date'] == _selectedDate).toList();
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FD),
+      appBar: AppBar(
+        title: const Text("Availability Sync", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        automaticallyImplyLeading: false, 
+        actions: [
+          TextButton(
+            onPressed: _jumpToToday, 
+            child: const Text("TODAY", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.blue),
+            onPressed: _fetchSpreadsheetSlots,
+          )
+        ],
+      ),
+      body: Column(
+        children: [
+          _buildStatusHeader(),
+          _buildSpreadsheetLink(),
+          const SizedBox(height: 12),
+          if (!_isLoadingSlots && uniqueDates.isNotEmpty) _buildFilterBar(),
+          Expanded(
+            child: widget.currentLecturer.timetableURL.isEmpty 
+              ? const Center(child: Text("No timetable URL linked to your account."))
+              : (_isLoadingSlots 
+                  ? const Center(child: CircularProgressIndicator()) 
+                  : _buildGroupedSlotList(filteredList)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterBar() {
+    return SizedBox(
+      height: 45,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        itemCount: uniqueDates.length,
+        itemBuilder: (context, index) {
+          String dateLabel = uniqueDates[index];
+          bool isSelected = _selectedDate == dateLabel;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilterChip(
+              label: Text(dateLabel),
+              selected: isSelected,
+              onSelected: (bool value) {
+                if (mounted) setState(() => _selectedDate = dateLabel);
+              },
+              selectedColor: Colors.blue.shade100,
+              checkmarkColor: Colors.blue,
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.blue.shade700 : Colors.black87,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(color: isSelected ? Colors.blue : Colors.grey.shade300),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildStatusHeader() {
+    return Container(
+      margin: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15)],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 25,
+            backgroundColor: _isAutoLocked ? Colors.orange.shade50 : (_isAvailable ? Colors.green.shade50 : Colors.red.shade50),
+            child: Icon(
+              _isAutoLocked ? Icons.lock : (_isAvailable ? Icons.check_circle : Icons.do_not_disturb_on), 
+              color: _isAutoLocked ? Colors.orange : (_isAvailable ? Colors.green : Colors.red)
+            ),
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_isAutoLocked ? "Auto-Status (Locked)" : "Global Visibility", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                Text(_currentStatus, 
+                  style: TextStyle(
+                    fontSize: 15, 
+                    fontWeight: FontWeight.bold, 
+                    color: _isAutoLocked ? Colors.orange : (_isAvailable ? Colors.green : Colors.red)
+                  )
+                ),
+              ],
+            ),
+          ),
+          Switch.adaptive(
+            value: _isAvailable, 
+            activeTrackColor: Colors.green, 
+            onChanged: _isAutoLocked ? null : _toggleStatus
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpreadsheetLink() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: InkWell(
+        onTap: _openSpreadsheet,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.blue.shade50,
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(color: Colors.blue.shade100),
+          ),
+          child: const Row(
             children: [
-              const Text("Create Available Slot", 
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
-              
-              Row(
-                children: [
-                  Expanded(
-                    child: _timePickerTile("Starts", _startTime, () async {
-                      final time = await showTimePicker(context: context, initialTime: _startTime);
-                      if (time != null) setModalState(() => _startTime = time);
-                    }),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8.0),
-                    child: Icon(Icons.arrow_forward, color: Colors.grey),
-                  ),
-                  Expanded(
-                    child: _timePickerTile("Ends", _endTime, () async {
-                      final time = await showTimePicker(context: context, initialTime: _endTime);
-                      if (time != null) setModalState(() => _endTime = time);
-                    }),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 20),
-              TextField(
-                controller: _noteController,
-                decoration: InputDecoration(
-                  labelText: "Purpose (Optional)",
-                  hintText: "e.g., Exam Prep",
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 24),
-              
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1565C0), // Consistent primary blue
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: () {
-                    if (_selectedDay == null) return;
-                    
-                    setState(() {
-                      _mySlots.add({
-                        "time": "${_startTime.format(context)} - ${_endTime.format(context)}",
-                        "note": _noteController.text.isEmpty ? "No notes" : _noteController.text,
-                        "date": DateFormat('dd/MM/yyyy').format(_selectedDay!), // Save specific date
-                      });
-                    });
-                    _noteController.clear();
-                    Navigator.pop(context);
-                  },
-                  child: const Text("ADD TO CALENDAR", style: TextStyle(color: Colors.white)),
-                ),
-              ),
-              const SizedBox(height: 30),
+              Icon(Icons.table_chart, color: Colors.blue),
+              SizedBox(width: 12),
+              Expanded(child: Text("Edit Timetable (Google Sheets)", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold))),
+              Icon(Icons.open_in_new, color: Colors.blue, size: 16),
             ],
           ),
         ),
@@ -119,113 +392,24 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     );
   }
 
-  Widget _timePickerTile(String label, TimeOfDay time, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(time.format(context), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+  Widget _buildGroupedSlotList(List<Map<String, dynamic>> slots) {
+    if (slots.isEmpty) return const Center(child: Text("No upcoming free slots found."));
+    return ListView.builder(
+      padding: const EdgeInsets.all(20),
+      itemCount: slots.length,
+      itemBuilder: (context, index) {
+        final slot = slots[index];
+        return Card(
+          elevation: 0,
+          margin: const EdgeInsets.only(bottom: 8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+          child: ListTile(
+            leading: const Icon(Icons.access_time_filled, color: Colors.blue, size: 20),
+            title: Text(slot['time'], style: const TextStyle(fontWeight: FontWeight.bold)),
+            trailing: Text(slot['date'], style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
           ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Manage Availability")),
-      body: Column(
-        children: [
-          TableCalendar(
-            firstDay: DateTime.utc(2025, 1, 1),
-            lastDay: DateTime.utc(2030, 12, 31),
-            focusedDay: _focusedDay,
-            calendarFormat: _calendarFormat,
-            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-            onDaySelected: (selectedDay, focusedDay) {
-              setState(() {
-                _selectedDay = selectedDay;
-                _focusedDay = focusedDay;
-              });
-            },
-            onFormatChanged: (format) => setState(() => _calendarFormat = format),
-          ),
-          
-          const Divider(),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text("Your Slots", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                Text(_selectedDay == null ? "" : DateFormat('EEEE, d MMM').format(_selectedDay!)),
-              ],
-            ),
-          ),
-
-          Expanded(
-            child: ListView.builder(
-              itemCount: _mySlots.length,
-              itemBuilder: (context, index) => _buildSlotTile(index),
-            ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddSlotSheet,
-        backgroundColor: const Color(0xFF1565C0),
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
-    );
-  }
-
-  // 2. Updated Slot Tile with Date Display
-  Widget _buildSlotTile(int index) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
-        side: BorderSide(color: Colors.grey.shade200),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: Colors.blue.shade50, shape: BoxShape.circle),
-          child: const Icon(Icons.access_time, color: Colors.blue),
-        ),
-        title: Text(_mySlots[index]['time']!, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            // THE FIX: Showing the date on the card
-            Text("Date: ${_mySlots[index]['date']}", style: const TextStyle(color: Colors.blue, fontSize: 13)),
-            Text(_mySlots[index]['note']!, style: TextStyle(color: Colors.grey.shade600)),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(icon: const Icon(Icons.edit_outlined, size: 20), onPressed: () {}),
-            IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
-              onPressed: () => setState(() => _mySlots.removeAt(index)),
-            ),
-          ],
-        ),
-      ),
+        );
+      },
     );
   }
 }

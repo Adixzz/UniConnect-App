@@ -25,6 +25,7 @@ class LecturerModel {
     required this.timetableURL,
   });
 
+  // Converts the LecturerModel object into a Map (for uploading to Firestore)
   Map<String, dynamic> toMap() {
     return {
       'uid': uid,
@@ -36,8 +37,8 @@ class LecturerModel {
       'modules': modules,
       'availability': availability,
       'role': role,
-      'location': location,
       'createdAt': DateTime.now().toIso8601String(),
+      'location': location,
       'timetableURL': timetableURL,
     };
   }
@@ -50,11 +51,12 @@ class LecturerModel {
       staffId: map['staffId'] ?? '',
       pin: map['pin'] ?? '',
       faculty: map['faculty'] ?? '',
+      location: map['location'] ?? 'Not Specified',
+      // Safely handle timetableURL retrieval
+      timetableURL: map['timetableURL'] ?? '',
       modules: List<String>.from(map['modules'] ?? []),
       availability: map['availability'] ?? 'Not in Lecture',
       role: map['role'] ?? 'lecturer',
-      location: map['location'] ?? 'Not Specified', // Maps from Firestore
-      timetableURL: map['timetableURL'] ?? '',
     );
   }
 }

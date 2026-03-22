@@ -71,7 +71,6 @@ class _ClubFormScreenState extends State<ClubFormScreen> {
 
     try {
       if (_isEditing) {
-        // update existing club — keep the same clubId
         await _dbService.updateClub(ClubModel(
           clubId: widget.existingClub!.clubId,
           name: name,
@@ -81,7 +80,6 @@ class _ClubFormScreenState extends State<ClubFormScreen> {
         ));
         _showSnackBar("Club updated successfully!");
       } else {
-        // add new club — generate a new Firestore document ID
         final newId = FirebaseFirestore.instance.collection('clubs').doc().id;
         await _dbService.saveClub(ClubModel(
           clubId: newId,
