@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:uniconnect/screens/admin/admin_main_nav.dart';
-import 'package:uniconnect/screens/lecturer/lecturer_main_nav.dart';
 import 'firebase_options.dart';
-import 'screens/admin/add_user_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'screens/auth/welcome_screen.dart';
 
 void main() async {
 
@@ -28,7 +26,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6C63FF)),
         useMaterial3: true,
       ),
-      home: const AdminMainNav(),
+      home: const WelcomeScreen(),
     );
   }
 }
