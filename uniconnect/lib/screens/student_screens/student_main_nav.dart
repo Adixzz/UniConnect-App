@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'student_home.dart';
 import 'student_profile.dart';
 import 'student meeting_request_screen.dart';
+import 'club_list_screen.dart';
 
 class StudentMainNavigation extends StatefulWidget {
   const StudentMainNavigation({super.key});
@@ -16,7 +17,7 @@ class _StudentMainNavigationState extends State<StudentMainNavigation> {
   final List<Widget> screens = [
     const StudentHomeScreen(),
     const MeetingsScreen(),
-    Center(child: Text("Clubs Screen")),
+    const ClubListScreen(),
     Center(child: Text("Alerts Screen")),
     const ProfileScreen(),
   ];
