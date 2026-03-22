@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
-import '../../models/meeting_models.dart';
+import '../../models/student_models/meeting_models.dart';
 import '../../widgets/meeting_cards.dart';
 import '../../services/database_service.dart';
 import 'request_choice_screen.dart';

@@ -1,10 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import '../models/student_model.dart';
-import '../models/lecturer_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; 
+
+import '../models/student_models/student_model.dart';
+import '../models/student_models/lecturer_model.dart';
 import 'database_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // 1. Student Login
   Future<String?> loginStudent({
@@ -48,13 +51,15 @@ class AuthService {
 
       await userCredential.user?.sendEmailVerification();
 
-      await DatabaseService().saveUser(StudentModel(
-        uid: userCredential.user!.uid,
-        name: name,
-        email: email,
-        studentId: studentId,
-        role: 'student',
-      ));
+      await DatabaseService().saveUser(
+        StudentModel(
+          uid: userCredential.user!.uid,
+          name: name,
+          email: email,
+          studentId: studentId,
+          role: 'student',
+        ),
+      );
 
       return null;
     } on FirebaseAuthException catch (e) {
@@ -76,13 +81,15 @@ class AuthService {
         password: password,
       );
 
-      await DatabaseService().saveUser(StudentModel(
-        uid: userCredential.user!.uid,
-        name: name,
-        email: email,
-        studentId: '',
-        role: 'admin',
-      ));
+      await DatabaseService().saveUser(
+        StudentModel(
+          uid: userCredential.user!.uid,
+          name: name,
+          email: email,
+          studentId: '',
+          role: 'admin',
+        ),
+      );
 
       return null;
     } on FirebaseAuthException catch (e) {
@@ -100,25 +107,50 @@ class AuthService {
         password: lecturer.pin,
       );
 
-      await DatabaseService().saveLecturer(LecturerModel(
-        uid: userCredential.user!.uid,
-        name: lecturer.name,
-        email: lecturer.email,
-        staffId: lecturer.staffId,
-        pin: lecturer.pin,
-        faculty: lecturer.faculty,
-        modules: lecturer.modules,
-        role: 'lecturer',
-        location: lecturer.location,
-        timetableURL: lecturer.timetableURL,
-
-      ));
+      await DatabaseService().saveLecturer(
+        LecturerModel(
+          uid: userCredential.user!.uid,
+          name: lecturer.name,
+          email: lecturer.email,
+          staffId: lecturer.staffId,
+          pin: lecturer.pin,
+          faculty: lecturer.faculty,
+          modules: lecturer.modules,
+          role: 'lecturer',
+          location: lecturer.location,
+          timetableURL: lecturer.timetableURL,
+        ),
+      );
 
       return null;
     } on FirebaseAuthException catch (e) {
       return e.message ?? "Failed to create lecturer";
     } catch (e) {
       return "An unexpected error occurred.";
+    }
+  }
+
+  // 6. Lecturer Login (Using Staff ID + PIN)
+  Future<dynamic> loginLecturer({
+    required String staffId,
+    required String pin,
+  }) async {
+    try {
+      QuerySnapshot snapshot = await _firestore
+          .collection('lecturers')
+          .where('staffId', isEqualTo: staffId)
+          .where('pin', isEqualTo: pin)
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isEmpty) {
+        return "Invalid Staff ID or Access Pin."; 
+      }
+
+      Map<String, dynamic> lecturerData = snapshot.docs.first.data() as Map<String, dynamic>;
+      return LecturerModel.fromMap(lecturerData);
+    } catch (e) {
+      return "An unexpected error occurred: $e";
     }
   }
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/database_service.dart'; 
 import 'filtered_lecturer_list_screen.dart';
-import '../../models/faculty_module_model.dart';
+import '../../models/student_models/faculty_module_model.dart';
 
 
 class ModuleSelectionScreen extends StatelessWidget {

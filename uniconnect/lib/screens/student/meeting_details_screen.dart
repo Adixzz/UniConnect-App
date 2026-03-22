@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart'; 
 import 'package:uniconnect/screens/student/student_main_nav.dart';
-import '../../models/lecturer_model.dart';
+import '../../models/student_models/lecturer_model.dart';
 import '../../services/database_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
