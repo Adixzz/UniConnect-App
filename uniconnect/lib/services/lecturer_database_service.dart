@@ -234,13 +234,25 @@ class LecturerDatabaseService {
     }
   }
 
-  // --- NEW: SAVE FCM TOKEN FOR LECTURER ---
+ // --- UPDATED: SAVE FCM TOKEN FOR LECTURER ---
   Future<void> saveFcmToken(String uid, String token) async {
     try {
-      await _db.collection('lecturers').doc(uid).update({
-        'fcmToken': token, 
-        'lastTokenUpdate': FieldValue.serverTimestamp(),
-      });
+      // 1. Search for the document where the 'uid' FIELD matches
+      final query = await _db
+          .collection('lecturers')
+          .where('uid', isEqualTo: uid)
+          .get();
+
+      // 2. If it finds the document (e.g., KbBRAvtRRRvNYLRz1WSx), update it!
+      if (query.docs.isNotEmpty) {
+        await query.docs.first.reference.update({
+          'fcmToken': token, 
+          'lastTokenUpdate': FieldValue.serverTimestamp(),
+        });
+        debugPrint("Lecturer FCM Token saved successfully!");
+      } else {
+        debugPrint("Could not find a lecturer document with uid: $uid");
+      }
     } catch (e) {
       debugPrint("Error saving Lecturer FCM token: $e");
     }

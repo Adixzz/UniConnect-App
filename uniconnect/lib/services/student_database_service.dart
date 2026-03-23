@@ -168,7 +168,6 @@ Future<void> addTestNotification(String uid) async {
     'timestamp': FieldValue.serverTimestamp(),
   });
 }
-
 // Inside your StudentDatabaseService
 Future<void> notifyLecturer({
   required String lecturerUid,
@@ -177,7 +176,7 @@ Future<void> notifyLecturer({
   required String time,
 }) async {
   try {
-    // 1. Save to History (So it shows in the Lecturer's 'Alerts' tab)
+    // 1. Save to History (We keep notifications in the 'users' path for everyone)
     await FirebaseFirestore.instance
         .collection('users')
         .doc(lecturerUid)
@@ -189,37 +188,51 @@ Future<void> notifyLecturer({
       'timestamp': FieldValue.serverTimestamp(),
     });
 
-    // 2. Trigger Push Notification (So the lecturer's phone buzzes)
+    // 2. TRIGGER PUSH NOTIFICATION (Safely grab the token)
+    // FIX: Make sure we are looking in the 'lecturers' collection!
     DocumentSnapshot lecturerDoc = await FirebaseFirestore.instance.collection('lecturers').doc(lecturerUid).get();
-    String? token = lecturerDoc.get('fcmToken'); //
 
-    if (token != null && token.isNotEmpty) {
-      final jsonString = await rootBundle.loadString('assets/service-account.json');
-      final credentials = ServiceAccountCredentials.fromJson(jsonString);
-      final scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
-      final client = await clientViaServiceAccount(credentials, scopes);
-      final accessToken = client.credentials.accessToken.data;
+    // Safely check if the document exists before doing ANYTHING else
+    if (lecturerDoc.exists) {
+      Map<String, dynamic>? data = lecturerDoc.data() as Map<String, dynamic>?;
 
-      const String projectId = 'uniconnect-133ae'; 
-      const String fcmUrl = 'https://fcm.googleapis.com/v1/projects/$projectId/messages:send';
+      // Safely check if the fcmToken field exists in the map
+      if (data != null && data.containsKey('fcmToken')) {
+        String? token = data['fcmToken'];
 
-      await http.post(
-        Uri.parse(fcmUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken',
-        },
-        body: jsonEncode({
-          'message': {
-            'token': token,
-            'notification': {
-              'title': 'New Meeting Request!',
-              'body': '$studentName requested a slot on $date.',
+        if (token != null && token.isNotEmpty) {
+          final jsonString = await rootBundle.loadString('assets/service-account.json');
+          final credentials = ServiceAccountCredentials.fromJson(jsonString);
+          final scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
+          final client = await clientViaServiceAccount(credentials, scopes);
+          final accessToken = client.credentials.accessToken.data;
+
+          const String projectId = 'uniconnect-133ae'; 
+          const String fcmUrl = 'https://fcm.googleapis.com/v1/projects/$projectId/messages:send';
+
+          await http.post(
+            Uri.parse(fcmUrl),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $accessToken',
             },
-          }
-        }),
-      );
-      client.close();
+            body: jsonEncode({
+              'message': {
+                'token': token,
+                'notification': {
+                  'title': 'New Meeting Request!',
+                  'body': '$studentName requested a slot on $date.',
+                },
+              }
+            }),
+          );
+          client.close();
+        }
+      } else {
+        debugPrint("FCM Token missing. Lecturer needs to log in to generate one.");
+      }
+    } else {
+      debugPrint("Lecturer document not found in the database!");
     }
   } catch (e) {
     debugPrint("Lecturer Notification Error: $e");
