@@ -31,3 +31,7 @@ Password: password123
 Lecturer Login -
 Staff ID : 1234
 Access Pin : 123456 
+
+Admin Login -
+email: sandevsamaranayake.nsbm.ac.lk
+Password: adminpassword
