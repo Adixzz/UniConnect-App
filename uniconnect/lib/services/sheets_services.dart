@@ -2,8 +2,6 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class SheetsService {
-  // converts a Google Sheets URL into a CSV export URL
-  // works as long as the sheet is set to "Anyone with the link can view"
   String _toCsvUrl(String sheetUrl) {
     // extract the sheet ID from the URL
     final uri = Uri.parse(sheetUrl);
@@ -12,8 +10,6 @@ class SheetsService {
     return 'https://docs.google.com/spreadsheets/d/$sheetId/export?format=csv';
   }
 
-  // fetches timetable data from Google Sheets and returns it as a 2D list
-  // each inner list is one row, each element is one cell
   Future<List<List<String>>> fetchTimetable(String sheetUrl) async {
     try {
       final csvUrl = _toCsvUrl(sheetUrl);

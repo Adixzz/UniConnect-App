@@ -9,7 +9,7 @@ import 'screens/student_screens/student_main_nav.dart';
 import 'screens/lecturer_screens/lecturer_main_nav.dart';
 import 'models/lecturer_model.dart';
 import 'services/lecturer_database_service.dart';
-import 'services/push_notification_service.dart'; // ADD THIS
+import 'services/push_notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,8 +18,7 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // initialize push notifications
-  await PushNotificationService.initialize(); // ADD THIS
+  await PushNotificationService.initialize();
 
   runApp(const MyApp());
 }

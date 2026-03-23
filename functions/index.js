@@ -3,7 +3,6 @@ const { onCall } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 admin.initializeApp();
 
-// triggers when a new document is added to notifications collection
 exports.sendTimetableNotification = onDocumentCreated(
   "notifications/{notificationId}",
   async (event) => {
@@ -62,7 +61,6 @@ exports.sendTimetableNotification = onDocumentCreated(
   }
 );
 
-// deletes a user from Firebase Auth when called from Flutter app
 exports.deleteUser = onCall(async (request) => {
   const uid = request.data.uid;
 

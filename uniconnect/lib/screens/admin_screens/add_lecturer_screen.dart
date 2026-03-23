@@ -64,9 +64,8 @@ class _AddLecturerScreenState extends State<AddLecturerScreen> {
     final email = _emailController.text.trim();
     final staffId = _staffIdController.text.trim();
     final pin = _pinController.text.trim();
-    final location = _locationController.text.trim(); // ADDED
+    final location = _locationController.text.trim();
 
-    // UPDATED — added location to empty check
     if (name.isEmpty || email.isEmpty || staffId.isEmpty || 
         pin.isEmpty || location.isEmpty) {
       _showSnackBar("Please fill in all fields");
@@ -85,7 +84,6 @@ class _AddLecturerScreenState extends State<AddLecturerScreen> {
 
     setState(() => _isLoading = true);
 
-    // UPDATED — added location to model
     final lecturer = LecturerModel(
       uid: '',
       name: name,
@@ -95,7 +93,7 @@ class _AddLecturerScreenState extends State<AddLecturerScreen> {
       faculty: _selectedFaculty!,
       modules: _selectedModules,
       location: location,
-      timetableURL: '', // Placeholder, can be updated later by the lecturer
+      timetableURL: '',
     );
 
     String? errorMessage = await _authService.registerLecturer(lecturer);

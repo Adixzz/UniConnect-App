@@ -254,10 +254,8 @@ class AdminDatabaseService {
     required String collection,
   }) async {
     try {
-      // delete from Firestore first
       await _db.collection(collection).doc(uid).delete();
 
-      // then delete from Firebase Auth via Cloud Function
       final callable = FirebaseFunctions.instance
           .httpsCallable('deleteUser');
       await callable.call({'uid': uid});
