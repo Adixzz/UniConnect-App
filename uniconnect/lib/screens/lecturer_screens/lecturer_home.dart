@@ -6,6 +6,8 @@ import '../../widgets/lecturer_widgets/schedule_tile.dart';
 import '../../models/lecturer_model.dart'; 
 import '../../services/lecturer_database_service.dart';
 import 'lecturer_request.dart';
+import 'package:firebase_messaging/firebase_messaging.dart'; 
+
 
 class LecturerHomeScreen extends StatefulWidget {
   final LecturerModel currentLecturer;
@@ -24,6 +26,7 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
   void initState() {
     super.initState();
     _fetchTotalStudents();
+    _setupPushNotifications();
   }
 
   // --- DYNAMIC GREETING HELPER ---
@@ -51,6 +54,18 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
     }
   }
 
+Future<void> _setupPushNotifications() async {
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+    NotificationSettings settings = await messaging.requestPermission();
+    
+    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+      String? token = await messaging.getToken();
+      if (token != null) {
+        // Saves the token to the 'lecturers' collection
+        await _dbService.saveFcmToken(widget.currentLecturer.uid, token);
+      }
+    }
+  }
   String _getTodayDateString() {
     DateTime now = DateTime.now();
     return "${now.day}/${now.month}/${now.year}";
