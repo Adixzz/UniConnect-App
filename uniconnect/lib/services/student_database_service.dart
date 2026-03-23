@@ -190,7 +190,7 @@ Future<void> notifyLecturer({
     });
 
     // 2. Trigger Push Notification (So the lecturer's phone buzzes)
-    DocumentSnapshot lecturerDoc = await FirebaseFirestore.instance.collection('users').doc(lecturerUid).get();
+    DocumentSnapshot lecturerDoc = await FirebaseFirestore.instance.collection('lecturers').doc(lecturerUid).get();
     String? token = lecturerDoc.get('fcmToken'); //
 
     if (token != null && token.isNotEmpty) {

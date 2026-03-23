@@ -233,4 +233,16 @@ class LecturerDatabaseService {
       debugPrint("Push Notification Error: $e");
     }
   }
+
+  // --- NEW: SAVE FCM TOKEN FOR LECTURER ---
+  Future<void> saveFcmToken(String uid, String token) async {
+    try {
+      await _db.collection('lecturers').doc(uid).update({
+        'fcmToken': token, 
+        'lastTokenUpdate': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint("Error saving Lecturer FCM token: $e");
+    }
+  }
 }
