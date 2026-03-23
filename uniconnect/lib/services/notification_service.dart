@@ -22,6 +22,7 @@ class NotificationService {
         'calendarYear': calendarYear,
         'message': message,
         'sentAt': DateTime.now().toIso8601String(),
+        'type': 'timetable_update',
       });
     } catch (e) {
       throw Exception("Error sending notification: $e");

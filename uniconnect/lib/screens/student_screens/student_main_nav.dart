@@ -4,6 +4,7 @@ import 'student_home.dart';
 import 'student_profile.dart';
 import 'student meeting_request_screen.dart';
 import 'club_list_screen.dart';
+import 'timetable_screen.dart';
 
 class StudentMainNavigation extends StatefulWidget {
   const StudentMainNavigation({super.key});
@@ -19,6 +20,7 @@ class _StudentMainNavigationState extends State<StudentMainNavigation> {
     const StudentHomeScreen(),
     const MeetingsScreen(),
     const ClubListScreen(),
+    const TimetableScreen(),
     const NotificationHistoryScreen(),
     const ProfileScreen(),
   ];
@@ -57,6 +59,17 @@ class _StudentMainNavigationState extends State<StudentMainNavigation> {
             selectedIcon: Icon(Icons.groups, color: Colors.blue),
             label: "Clubs",
           ),
+          NavigationDestination(
+            icon: Badge(
+              smallSize: 8,
+              child: Icon(Icons.schedule_outlined),
+            ),
+            selectedIcon: Badge(
+              smallSize: 8,
+              child: Icon(Icons.notifications, color: Colors.blue),
+            ),
+            label: "Timetable",
+          ),
 
           NavigationDestination(
             icon: Badge(
@@ -69,7 +82,6 @@ class _StudentMainNavigationState extends State<StudentMainNavigation> {
             ),
             label: "Alerts",
           ),
-
           NavigationDestination(
             icon: Icon(Icons.person_outline),
             selectedIcon: Icon(Icons.person, color: Colors.blue),

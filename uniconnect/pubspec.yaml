@@ -43,9 +43,10 @@ dependencies:
   http: ^1.2.0
   firebase_messaging: 16.1.1
   cloud_functions: 6.0.6
-  url_launcher: ^6.2.5
+  url_launcher: ^6.3.2
   googleapis_auth: ^2.0.0
   shared_preferences: ^2.5.4
+  flutter_local_notifications: ^21.0.0
 
 
 dev_dependencies:

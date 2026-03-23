@@ -267,4 +267,87 @@ class StudentDatabaseService {
       debugPrint("Lecturer Notification Error: $e");
     }
   }
+
+  // Save student's timetable selection to their profile
+  Future<void> saveStudentTimetableSelection({
+    required String uid,
+    required String pathway,
+    required String degree,
+    required String academicYear,
+    required String semester,
+    required String calendarYear,
+  }) async {
+    try {
+      await _db.collection('users').doc(uid).update({
+        'pathway': pathway,
+        'degree': degree,
+        'academicYear': academicYear,
+        'semester': semester,
+        'calendarYear': calendarYear,
+      });
+    } catch (e) {
+      print("Error saving timetable selection: $e");
+      rethrow;
+    }
+  }
+
+  // Fetch student's saved timetable selection
+  Future<Map<String, dynamic>?> getStudentTimetableSelection(
+      String uid) async {
+    try {
+      final doc = await _db.collection('users').doc(uid).get();
+      final data = doc.data();
+      if (data != null && data.containsKey('pathway')) {
+        return {
+          'pathway': data['pathway'],
+          'degree': data['degree'],
+          'academicYear': data['academicYear'],
+          'semester': data['semester'],
+          'calendarYear': data['calendarYear'],
+        };
+      }
+      return null;
+    } catch (e) {
+      print("Error fetching timetable selection: $e");
+      return null;
+    }
+  }
+
+  // Fetch timetable by ID
+  Future<Map<String, dynamic>?> getTimetableByGroupId(
+      String timetableId) async {
+    try {
+      final doc =
+          await _db.collection('timetables').doc(timetableId).get();
+      if (doc.exists) {
+        return doc.data();
+      }
+      return null;
+    } catch (e) {
+      print("Error fetching timetable: $e");
+      return null;
+    }
+  }
+
+  // fetch all pathways
+  Future<List<String>> getPathways() async {
+    try {
+      final snapshot = await _db.collection('pathways').get();
+      return snapshot.docs.map((doc) => doc['name'] as String).toList();
+    } catch (e) {
+      print("Error fetching pathways: $e");
+      return [];
+    }
+  }
+
+  // fetch all degrees
+  Future<List<String>> getDegrees() async {
+    try {
+      final snapshot = await _db.collection('degrees').get();
+      return snapshot.docs.map((doc) => doc['name'] as String).toList();
+    } catch (e) {
+      print("Error fetching degrees: $e");
+      return [];
+    }
+  }
 }
