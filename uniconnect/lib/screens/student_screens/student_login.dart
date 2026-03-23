@@ -3,6 +3,7 @@ import 'package:uniconnect/screens/student_screens/student_main_nav.dart';
 import 'student_register.dart';
 import '../../services/auth_service.dart';
 import 'student_home.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class StudentLoginScreen extends StatefulWidget {
   const StudentLoginScreen({super.key});
@@ -29,11 +30,15 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     if (mounted) setState(() => _isLoading = false);
 
     if (errorMessage == null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_role', 'student');
       _showSnackBar("Login Successful!");
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const StudentMainNavigation()),
-      );
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const StudentMainNavigation()),
+        );
+      }
     } else {
       _showSnackBar(errorMessage);
     }

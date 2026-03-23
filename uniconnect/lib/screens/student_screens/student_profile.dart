@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // --- NEW IMPORT ---
 import '../../services/student_database_service.dart';
 import '../auth_screen/welcome_screen.dart'; 
 import '../../widgets/student_widgets/profile_activity_item.dart';
@@ -22,11 +23,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool meetingReminders = true;
   bool clubAnnouncements = true;
 
-  // Logout Logic
+  // --- UPDATED LOGOUT LOGIC ---
   Future<void> _handleLogout() async {
+    // 1. Wipe the persistent role from the phone's memory
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('user_role');
+
+    // 2. Sign out of Firebase
     await FirebaseAuth.instance.signOut();
     if (!mounted) return;
     
+    // 3. Navigate to Welcome Screen
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => const WelcomeScreen()),
@@ -238,12 +245,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 decoration: cardDecoration(),
                 child: Column(
                   children: [
-                    const ProfileSettingItem(
-                      icon: Icons.settings_outlined,
-                      title: 'Account Settings',
-                    ),
-                    const Divider(height: 1),
-                    // Functional Logout Item
+                    // Functional Logout Item (Account Settings removed)
                     GestureDetector(
                       onTap: _handleLogout,
                       child: const ProfileSettingItem(

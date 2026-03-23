@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // --- NEW IMPORT ---
 import '../../models/lecturer_model.dart';
 import '../auth_screen/welcome_screen.dart';
 
@@ -74,8 +75,16 @@ class _LecturerSettingsScreenState extends State<LecturerSettingsScreen> {
     }
   }
 
+  // --- UPDATED LOGOUT LOGIC ---
   Future<void> _handleLogout() async {
+    // 1. Wipe the persistent role from the phone's memory
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('user_role');
+
+    // 2. Sign out of Firebase
     await FirebaseAuth.instance.signOut();
+    
+    // 3. Navigate to Welcome Screen
     if (mounted) {
       Navigator.pushAndRemoveUntil(
         context,
@@ -165,7 +174,6 @@ class _LecturerSettingsScreenState extends State<LecturerSettingsScreen> {
       ),
       child: Column(
         children: [
-          // REPLACED ACCOUNT SETTINGS WITH UPDATE LOCATION
           _buildSettingsTile(
             icon: Icons.location_on_outlined,
             title: 'Change Office Location',

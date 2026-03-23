@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:uniconnect/screens/lecturer_screens/lecturer_main_nav.dart';
 import 'package:uniconnect/services/auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uniconnect/models/lecturer_model.dart';
 
 class LecturerLoginScreen extends StatefulWidget {
@@ -53,16 +54,21 @@ class _LecturerLoginScreenState extends State<LecturerLoginScreen> {
     // Handle the result
     if (result is LecturerModel) {
       // Login successful!
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Login Successful!')));
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_role', 'lecturer');
+      if (mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Login Successful!'))
+    );
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => LecturerMainNavigation(currentLecturer: result),
-        ),
-      );
+    // 2. Navigate to Lecturer Dashboard
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LecturerMainNavigation(currentLecturer: result),
+      ),
+    );
+  }
     } else {
       ScaffoldMessenger.of(
         context,
