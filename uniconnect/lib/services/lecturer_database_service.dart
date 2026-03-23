@@ -2,6 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:convert';
+import 'package:googleapis_auth/auth_io.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
 class LecturerDatabaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -11,8 +14,15 @@ class LecturerDatabaseService {
     return _db.collection('lecturers').doc(uid).get();
   }
 
+  Future<void> updateMeetingStatus(String meetingId, String status) async {
+    await _db.collection('meetings').doc(meetingId).update({'status': status});
+  }
+
   // Update availability status in Firestore
-  Future<void> updateFirestoreAvailability(String staffId, String status) async {
+  Future<void> updateFirestoreAvailability(
+    String staffId,
+    String status,
+  ) async {
     try {
       final query = await _db
           .collection('lecturers')
@@ -27,17 +37,23 @@ class LecturerDatabaseService {
   }
 
   // Core logic to fetch spreadsheet and determine availability
-  Future<Map<String, dynamic>> fetchAndParseAvailability(String timetableURL) async {
+  Future<Map<String, dynamic>> fetchAndParseAvailability(
+    String timetableURL,
+  ) async {
     // Convert view URL to export URL
-    String exportUrl = timetableURL.contains('/edit') 
-        ? timetableURL.split('/edit')[0] + '/export?format=csv' 
+    String exportUrl = timetableURL.contains('/edit')
+        ? timetableURL.split('/edit')[0] + '/export?format=csv'
         : timetableURL;
 
     final response = await http.get(Uri.parse(exportUrl));
-    if (response.statusCode != 200) throw Exception("Failed to fetch spreadsheet");
+    if (response.statusCode != 200)
+      throw Exception("Failed to fetch spreadsheet");
 
     final data = response.body;
-    List<List<String>> sheet = data.split("\n").map((row) => row.split(",")).toList();
+    List<List<String>> sheet = data
+        .split("\n")
+        .map((row) => row.split(","))
+        .toList();
     if (sheet.isEmpty || sheet[0].length < 2) return {};
 
     List<String> dates = sheet[0];
@@ -74,8 +90,9 @@ class LecturerDatabaseService {
         if (row.length < 2) continue;
         DateTime start = _parseTime(row[0], now);
         DateTime end = _parseTime(row[1], now);
-        
-        if (now.isAfter(start.subtract(const Duration(seconds: 1))) && now.isBefore(end)) {
+
+        if (now.isAfter(start.subtract(const Duration(seconds: 1))) &&
+            now.isBefore(end)) {
           String content = (todayCol < row.length) ? row[todayCol].trim() : "";
           if (content.isNotEmpty) {
             currentlyInLecture = true;
@@ -100,11 +117,15 @@ class LecturerDatabaseService {
         bool isPastDay = false;
         try {
           String cleanDate = dateString.replaceAllMapped(
-            RegExp(r'([a-zA-Z]+)(\d+)'), 
-            (match) => '${match.group(1)} ${match.group(2)}'
+            RegExp(r'([a-zA-Z]+)(\d+)'),
+            (match) => '${match.group(1)} ${match.group(2)}',
           );
           DateTime parsedDate = DateFormat("MMM d").parse(cleanDate);
-          DateTime fullDate = DateTime(now.year, parsedDate.month, parsedDate.day);
+          DateTime fullDate = DateTime(
+            now.year,
+            parsedDate.month,
+            parsedDate.day,
+          );
           if (fullDate.isBefore(todayMidnight)) isPastDay = true;
         } catch (e) {}
 
@@ -112,7 +133,10 @@ class LecturerDatabaseService {
 
         String cellValue = (j < row.length) ? row[j].trim() : "";
         if (cellValue.isEmpty) {
-          fetchedSlots.add({"date": dateString, "time": "$startTime - $endTime"});
+          fetchedSlots.add({
+            "date": dateString,
+            "time": "$startTime - $endTime",
+          });
           dateSet.add(dateString);
         }
       }
@@ -136,18 +160,24 @@ class LecturerDatabaseService {
       int min = int.parse(hm[1]);
       if (parts[1].toUpperCase() == "PM" && hour != 12) hour += 12;
       if (parts[1].toUpperCase() == "AM" && hour == 12) hour = 0;
-      return DateTime(contextDate.year, contextDate.month, contextDate.day, hour, min);
+      return DateTime(
+        contextDate.year,
+        contextDate.month,
+        contextDate.day,
+        hour,
+        min,
+      );
     } catch (e) {
-      return DateTime(contextDate.year, contextDate.month, contextDate.day, 0, 0);
+      return DateTime(
+        contextDate.year,
+        contextDate.month,
+        contextDate.day,
+        0,
+        0,
+      );
     }
   }
 
-  // --- NEW: MEETING MANAGEMENT ---
-  Future<void> updateMeetingStatus(String meetingId, String status) async {
-    await _db.collection('meetings').doc(meetingId).update({'status': status});
-  }
-
-  // --- NEW: SEND NOTIFICATION TO STUDENT ---
   Future<void> notifyStudent({
     required String studentUid,
     required String status,
@@ -155,18 +185,52 @@ class LecturerDatabaseService {
     required String lecturerName,
   }) async {
     try {
-      await _db
-          .collection('users')
-          .doc(studentUid)
-          .collection('notifications')
-          .add({
+      // 1. Save to History (Makes card appear in student's app)
+      await _db.collection('users').doc(studentUid).collection('notifications').add({
         'title': 'Meeting $status!',
         'body': 'Your meeting for $date has been $status by $lecturerName.',
         'type': 'meeting',
         'timestamp': FieldValue.serverTimestamp(),
       });
+
+      // 2. Trigger Push Notification via HTTP v1
+      DocumentSnapshot studentDoc = await _db.collection('users').doc(studentUid).get();
+      String? token = studentDoc.get('fcmToken');
+
+      if (token != null && token.isNotEmpty) {
+        // A. Authenticate using the Service Account JSON
+        final jsonString = await rootBundle.loadString('assets/service-account.json');
+        final credentials = ServiceAccountCredentials.fromJson(jsonString);
+        final scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
+        
+        final client = await clientViaServiceAccount(credentials, scopes);
+        final accessToken = client.credentials.accessToken.data;
+
+        // B. Send the HTTP v1 Request (Using your specific Project ID)
+        const String projectId = 'uniconnect-133ae'; 
+        const String fcmUrl = 'https://fcm.googleapis.com/v1/projects/$projectId/messages:send';
+
+        await http.post(
+          Uri.parse(fcmUrl),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $accessToken',
+          },
+          body: jsonEncode({
+            'message': {  // The V1 API requires the payload to be wrapped in a 'message' object
+              'token': token,
+              'notification': {
+                'title': 'Meeting $status!',
+                'body': 'Meeting with $lecturerName on $date is $status.',
+              },
+            }
+          }),
+        );
+        
+        client.close(); // Clean up the connection
+      }
     } catch (e) {
-      debugPrint("Notification Error: $e");
+      debugPrint("Push Notification Error: $e");
     }
   }
 }
