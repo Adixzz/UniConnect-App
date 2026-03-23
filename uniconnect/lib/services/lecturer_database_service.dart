@@ -9,7 +9,7 @@ import 'package:flutter/services.dart' show rootBundle;
 class LecturerDatabaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-// --- UPDATED: Fetch basic user data using .where() ---
+  // --- 1. FIX LOGOUT BUG: Fetch basic user data using .where() ---
   Future<DocumentSnapshot> getUserData(String uid) async {
     final query = await _db
         .collection('lecturers')
@@ -17,25 +17,42 @@ class LecturerDatabaseService {
         .get();
 
     if (query.docs.isNotEmpty) {
-      return query.docs.first; // Returns the actual document (e.g. KbBRAvt...)
+      return query.docs.first;
     } else {
       throw Exception("Lecturer document not found for this UID!");
     }
   }
+
+  // --- 2. FIX NOTIFICATIONS: Save FCM Token using .where() ---
+  Future<void> saveFcmToken(String uid, String token) async {
+    try {
+      final query = await _db
+          .collection('lecturers')
+          .where('uid', isEqualTo: uid)
+          .get();
+
+      if (query.docs.isNotEmpty) {
+        await query.docs.first.reference.update({
+          'fcmToken': token, 
+          'lastTokenUpdate': FieldValue.serverTimestamp(),
+        });
+        debugPrint("Lecturer FCM Token saved successfully!");
+      } else {
+        debugPrint("Could not find a lecturer document with uid: $uid");
+      }
+    } catch (e) {
+      debugPrint("Error saving Lecturer FCM token: $e");
+    }
+  }
+
+  // --- 3. Keep Existing Methods ---
   Future<void> updateMeetingStatus(String meetingId, String status) async {
     await _db.collection('meetings').doc(meetingId).update({'status': status});
   }
 
-  // Update availability status in Firestore
-  Future<void> updateFirestoreAvailability(
-    String staffId,
-    String status,
-  ) async {
+  Future<void> updateFirestoreAvailability(String staffId, String status) async {
     try {
-      final query = await _db
-          .collection('lecturers')
-          .where('staffId', isEqualTo: staffId)
-          .get();
+      final query = await _db.collection('lecturers').where('staffId', isEqualTo: staffId).get();
       if (query.docs.isNotEmpty) {
         await query.docs.first.reference.update({'availability': status});
       }
@@ -44,24 +61,31 @@ class LecturerDatabaseService {
     }
   }
 
-  // Core logic to fetch spreadsheet and determine availability
-  Future<Map<String, dynamic>> fetchAndParseAvailability(
-    String timetableURL,
-  ) async {
-    // Convert view URL to export URL
+  // Helper to parse "09.00 AM" style strings
+  DateTime _parseTime(String timeStr, DateTime contextDate) {
+    try {
+      final parts = timeStr.trim().split(" ");
+      final hm = parts[0].split(".");
+      int hour = int.parse(hm[0]);
+      int min = int.parse(hm[1]);
+      if (parts[1].toUpperCase() == "PM" && hour != 12) hour += 12;
+      if (parts[1].toUpperCase() == "AM" && hour == 12) hour = 0;
+      return DateTime(contextDate.year, contextDate.month, contextDate.day, hour, min);
+    } catch (e) {
+      return DateTime(contextDate.year, contextDate.month, contextDate.day, 0, 0);
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchAndParseAvailability(String timetableURL) async {
     String exportUrl = timetableURL.contains('/edit')
         ? timetableURL.split('/edit')[0] + '/export?format=csv'
         : timetableURL;
 
     final response = await http.get(Uri.parse(exportUrl));
-    if (response.statusCode != 200)
-      throw Exception("Failed to fetch spreadsheet");
+    if (response.statusCode != 200) throw Exception("Failed to fetch spreadsheet");
 
     final data = response.body;
-    List<List<String>> sheet = data
-        .split("\n")
-        .map((row) => row.split(","))
-        .toList();
+    List<List<String>> sheet = data.split("\n").map((row) => row.split(",")).toList();
     if (sheet.isEmpty || sheet[0].length < 2) return {};
 
     List<String> dates = sheet[0];
@@ -70,7 +94,6 @@ class LecturerDatabaseService {
     DateTime now = DateTime.now();
     DateTime todayMidnight = DateTime(now.year, now.month, now.day);
 
-    // Identify Weekend columns based on spreadsheet content
     Set<int> weekendIndices = {};
     for (var row in sheet) {
       for (int j = 0; j < row.length; j++) {
@@ -91,7 +114,6 @@ class LecturerDatabaseService {
     bool currentlyInLecture = false;
     String lectureName = "";
 
-    // Check if the lecturer is currently in a session
     if (!isWeekend && todayCol != -1) {
       for (int i = 1; i < sheet.length; i++) {
         List<String> row = sheet[i];
@@ -99,8 +121,7 @@ class LecturerDatabaseService {
         DateTime start = _parseTime(row[0], now);
         DateTime end = _parseTime(row[1], now);
 
-        if (now.isAfter(start.subtract(const Duration(seconds: 1))) &&
-            now.isBefore(end)) {
+        if (now.isAfter(start.subtract(const Duration(seconds: 1))) && now.isBefore(end)) {
           String content = (todayCol < row.length) ? row[todayCol].trim() : "";
           if (content.isNotEmpty) {
             currentlyInLecture = true;
@@ -111,7 +132,6 @@ class LecturerDatabaseService {
       }
     }
 
-    // Process all rows to find "Free" (empty) slots
     for (int i = 1; i < sheet.length; i++) {
       List<String> row = sheet[i];
       if (row.length < 2) continue;
@@ -129,11 +149,7 @@ class LecturerDatabaseService {
             (match) => '${match.group(1)} ${match.group(2)}',
           );
           DateTime parsedDate = DateFormat("MMM d").parse(cleanDate);
-          DateTime fullDate = DateTime(
-            now.year,
-            parsedDate.month,
-            parsedDate.day,
-          );
+          DateTime fullDate = DateTime(now.year, parsedDate.month, parsedDate.day);
           if (fullDate.isBefore(todayMidnight)) isPastDay = true;
         } catch (e) {}
 
@@ -141,10 +157,7 @@ class LecturerDatabaseService {
 
         String cellValue = (j < row.length) ? row[j].trim() : "";
         if (cellValue.isEmpty) {
-          fetchedSlots.add({
-            "date": dateString,
-            "time": "$startTime - $endTime",
-          });
+          fetchedSlots.add({"date": dateString, "time": "$startTime - $endTime"});
           dateSet.add(dateString);
         }
       }
@@ -159,33 +172,6 @@ class LecturerDatabaseService {
     };
   }
 
-  // Helper to parse "09.00 AM" style strings
-  DateTime _parseTime(String timeStr, DateTime contextDate) {
-    try {
-      final parts = timeStr.trim().split(" ");
-      final hm = parts[0].split(".");
-      int hour = int.parse(hm[0]);
-      int min = int.parse(hm[1]);
-      if (parts[1].toUpperCase() == "PM" && hour != 12) hour += 12;
-      if (parts[1].toUpperCase() == "AM" && hour == 12) hour = 0;
-      return DateTime(
-        contextDate.year,
-        contextDate.month,
-        contextDate.day,
-        hour,
-        min,
-      );
-    } catch (e) {
-      return DateTime(
-        contextDate.year,
-        contextDate.month,
-        contextDate.day,
-        0,
-        0,
-      );
-    }
-  }
-
   Future<void> notifyStudent({
     required String studentUid,
     required String status,
@@ -193,7 +179,6 @@ class LecturerDatabaseService {
     required String lecturerName,
   }) async {
     try {
-      // 1. Save to History (Makes card appear in student's app)
       await _db.collection('users').doc(studentUid).collection('notifications').add({
         'title': 'Meeting $status!',
         'body': 'Your meeting for $date has been $status by $lecturerName.',
@@ -201,20 +186,17 @@ class LecturerDatabaseService {
         'timestamp': FieldValue.serverTimestamp(),
       });
 
-      // 2. Trigger Push Notification via HTTP v1
+      // The student documents actually use their UID as the Document ID, so this is safe!
       DocumentSnapshot studentDoc = await _db.collection('users').doc(studentUid).get();
       String? token = studentDoc.get('fcmToken');
 
       if (token != null && token.isNotEmpty) {
-        // A. Authenticate using the Service Account JSON
         final jsonString = await rootBundle.loadString('assets/service-account.json');
         final credentials = ServiceAccountCredentials.fromJson(jsonString);
         final scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
-        
         final client = await clientViaServiceAccount(credentials, scopes);
         final accessToken = client.credentials.accessToken.data;
 
-        // B. Send the HTTP v1 Request (Using your specific Project ID)
         const String projectId = 'uniconnect-133ae'; 
         const String fcmUrl = 'https://fcm.googleapis.com/v1/projects/$projectId/messages:send';
 
@@ -225,7 +207,7 @@ class LecturerDatabaseService {
             'Authorization': 'Bearer $accessToken',
           },
           body: jsonEncode({
-            'message': {  // The V1 API requires the payload to be wrapped in a 'message' object
+            'message': {  
               'token': token,
               'notification': {
                 'title': 'Meeting $status!',
@@ -234,13 +216,10 @@ class LecturerDatabaseService {
             }
           }),
         );
-        
-        client.close(); // Clean up the connection
+        client.close(); 
       }
     } catch (e) {
       debugPrint("Push Notification Error: $e");
     }
   }
-
- 
 }

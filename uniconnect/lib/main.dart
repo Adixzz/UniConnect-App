@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uniconnect/screens/admin_screens/admin_main_nav.dart';
 import 'firebase_options.dart';
 import 'screens/auth_screen/welcome_screen.dart';
 // Import your navigation screens
