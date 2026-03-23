@@ -26,21 +26,25 @@ class StudentDatabaseService {
   Future<List<FacultyModel>> getFaculties() async {
     try {
       final snapshot = await _db.collection('faculties').get();
-      return snapshot.docs.map((doc) => FacultyModel.fromMap(doc.data())).toList();
+      return snapshot.docs
+          .map((doc) => FacultyModel.fromMap(doc.data()))
+          .toList();
     } catch (e) {
       print("Error fetching faculties: $e");
       return [];
     }
   }
-  
 
   // 4. Fetch modules linked to a specific faculty
   Future<List<ModuleModel>> getModulesByFaculty(String facultyCode) async {
     try {
-      final snapshot = await _db.collection('modules')
+      final snapshot = await _db
+          .collection('modules')
           .where('facultyCode', isEqualTo: facultyCode)
           .get();
-      return snapshot.docs.map((doc) => ModuleModel.fromMap(doc.data())).toList();
+      return snapshot.docs
+          .map((doc) => ModuleModel.fromMap(doc.data()))
+          .toList();
     } catch (e) {
       print("Error fetching modules: $e");
       return [];
@@ -65,7 +69,9 @@ class StudentDatabaseService {
     try {
       final snapshot = await _db.collection('lecturers').get();
       return snapshot.docs
-          .map((doc) => LecturerModel.fromMap(doc.data())) // Ensure you have a fromMap in LecturerModel
+          .map(
+            (doc) => LecturerModel.fromMap(doc.data()),
+          ) // Ensure you have a fromMap in LecturerModel
           .toList();
     } catch (e) {
       print("Error fetching all lecturers: $e");
@@ -74,13 +80,20 @@ class StudentDatabaseService {
   }
 
   // 10. Fetch Lecturers Filtered by Faculty & Module (Academic Path)
-  Future<List<LecturerModel>> getFilteredLecturers(String facultyCode, String moduleName) async {
+  Future<List<LecturerModel>> getFilteredLecturers(
+    String facultyCode,
+    String moduleName,
+  ) async {
     try {
-      final snapshot = await _db.collection('lecturers')
+      final snapshot = await _db
+          .collection('lecturers')
           .where('faculty', isEqualTo: facultyCode)
-          .where('modules', arrayContains: moduleName) // This works because your model uses a List<String>
+          .where(
+            'modules',
+            arrayContains: moduleName,
+          ) // This works because your model uses a List<String>
           .get();
-      
+
       return snapshot.docs
           .map((doc) => LecturerModel.fromMap(doc.data()))
           .toList();
@@ -90,7 +103,7 @@ class StudentDatabaseService {
     }
   }
 
-// 11. Save Meeting Request
+  // 11. Save Meeting Request
   // We've added the 'location' parameter to make it dynamic
   Future<void> saveMeetingRequest({
     required String studentUid,
@@ -120,9 +133,11 @@ class StudentDatabaseService {
       rethrow;
     }
   }
+
   // 12. Stream Meetings for the Student
   Stream<QuerySnapshot> getStudentMeetings(String studentUid) {
-    return _db.collection('meetings')
+    return _db
+        .collection('meetings')
         .where('studentUid', isEqualTo: studentUid)
         .orderBy('createdAt', descending: true)
         .snapshots();
@@ -139,6 +154,7 @@ class StudentDatabaseService {
       rethrow;
     }
   }
+
   // Fetch specific user data by UID
   Future<DocumentSnapshot> getUserData(String uid) {
     return _db.collection('users').doc(uid).get();
@@ -147,7 +163,7 @@ class StudentDatabaseService {
   Future<void> saveFcmToken(String uid, String token) async {
     try {
       await _db.collection('users').doc(uid).update({
-        'fcmToken': token, 
+        'fcmToken': token,
         'lastTokenUpdate': FieldValue.serverTimestamp(),
       });
     } catch (e) {
@@ -156,86 +172,99 @@ class StudentDatabaseService {
   }
 
   // Add this to StudentDatabaseService
-Future<void> addTestNotification(String uid) async {
-  await FirebaseFirestore.instance
-      .collection('users')
-      .doc(uid)
-      .collection('notifications')
-      .add({
-    'title': 'Meeting Accepted!',
-    'body': 'Your meeting with the lecturer has been approved.',
-    'type': 'meeting',
-    'timestamp': FieldValue.serverTimestamp(),
-  });
-}
-// Inside your StudentDatabaseService
-Future<void> notifyLecturer({
-  required String lecturerUid,
-  required String studentName,
-  required String date,
-  required String time,
-}) async {
-  try {
-    // 1. Save to History (We keep notifications in the 'users' path for everyone)
+  Future<void> addTestNotification(String uid) async {
     await FirebaseFirestore.instance
         .collection('users')
-        .doc(lecturerUid)
+        .doc(uid)
         .collection('notifications')
         .add({
-      'title': 'New Meeting Request!',
-      'body': '$studentName wants to meet on $date at $time.',
-      'type': 'meeting',
-      'timestamp': FieldValue.serverTimestamp(),
-    });
+          'title': 'Meeting Accepted!',
+          'body': 'Your meeting with the lecturer has been approved.',
+          'type': 'meeting',
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+  }
 
-    // 2. TRIGGER PUSH NOTIFICATION (Safely grab the token)
-    // FIX: Make sure we are looking in the 'lecturers' collection!
-    DocumentSnapshot lecturerDoc = await FirebaseFirestore.instance.collection('lecturers').doc(lecturerUid).get();
+  // Inside your StudentDatabaseService
+  Future<void> notifyLecturer({
+    required String lecturerUid,
+    required String studentName,
+    required String date,
+    required String time,
+  }) async {
+    try {
+      // 1. Save to History (This part is working perfectly!)
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(lecturerUid)
+          .collection('notifications')
+          .add({
+            'title': 'New Meeting Request!',
+            'body': '$studentName wants to meet on $date at $time.',
+            'type': 'meeting',
+            'timestamp': FieldValue.serverTimestamp(),
+          });
 
-    // Safely check if the document exists before doing ANYTHING else
-    if (lecturerDoc.exists) {
-      Map<String, dynamic>? data = lecturerDoc.data() as Map<String, dynamic>?;
+      // 2. TRIGGER PUSH NOTIFICATION
+      // FIX: Use .where() to search for the uid field instead of assuming the Document ID!
+      final query = await FirebaseFirestore.instance
+          .collection('lecturers')
+          .where('uid', isEqualTo: lecturerUid)
+          .get();
 
-      // Safely check if the fcmToken field exists in the map
-      if (data != null && data.containsKey('fcmToken')) {
-        String? token = data['fcmToken'];
+      // Safely check if the query actually found a matching lecturer
+      if (query.docs.isNotEmpty) {
+        DocumentSnapshot lecturerDoc = query.docs.first;
+        Map<String, dynamic>? data =
+            lecturerDoc.data() as Map<String, dynamic>?;
 
-        if (token != null && token.isNotEmpty) {
-          final jsonString = await rootBundle.loadString('assets/service-account.json');
-          final credentials = ServiceAccountCredentials.fromJson(jsonString);
-          final scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
-          final client = await clientViaServiceAccount(credentials, scopes);
-          final accessToken = client.credentials.accessToken.data;
+        // Safely check if the fcmToken field exists in the map
+        if (data != null && data.containsKey('fcmToken')) {
+          String? token = data['fcmToken'];
 
-          const String projectId = 'uniconnect-133ae'; 
-          const String fcmUrl = 'https://fcm.googleapis.com/v1/projects/$projectId/messages:send';
+          if (token != null && token.isNotEmpty) {
+            final jsonString = await rootBundle.loadString(
+              'assets/service-account.json',
+            );
+            final credentials = ServiceAccountCredentials.fromJson(jsonString);
+            final scopes = [
+              'https://www.googleapis.com/auth/firebase.messaging',
+            ];
+            final client = await clientViaServiceAccount(credentials, scopes);
+            final accessToken = client.credentials.accessToken.data;
 
-          await http.post(
-            Uri.parse(fcmUrl),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $accessToken',
-            },
-            body: jsonEncode({
-              'message': {
-                'token': token,
-                'notification': {
-                  'title': 'New Meeting Request!',
-                  'body': '$studentName requested a slot on $date.',
+            const String projectId = 'uniconnect-133ae';
+            const String fcmUrl =
+                'https://fcm.googleapis.com/v1/projects/$projectId/messages:send';
+
+            await http.post(
+              Uri.parse(fcmUrl),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $accessToken',
+              },
+              body: jsonEncode({
+                'message': {
+                  'token': token,
+                  'notification': {
+                    'title': 'New Meeting Request!',
+                    'body': '$studentName requested a slot on $date.',
+                  },
                 },
-              }
-            }),
+              }),
+            );
+            client.close();
+          }
+        } else {
+          debugPrint(
+            "FCM Token missing. Lecturer needs to log in to generate one.",
           );
-          client.close();
         }
       } else {
-        debugPrint("FCM Token missing. Lecturer needs to log in to generate one.");
+        debugPrint("Lecturer document not found in the database!");
       }
-    } else {
-      debugPrint("Lecturer document not found in the database!");
+    } catch (e) {
+      debugPrint("Lecturer Notification Error: $e");
     }
-  } catch (e) {
-    debugPrint("Lecturer Notification Error: $e");
   }
-}
 }
