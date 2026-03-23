@@ -3,11 +3,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../widgets/lecturer_widgets/summary_card.dart';
 import '../../widgets/lecturer_widgets/request_card.dart';
 import '../../widgets/lecturer_widgets/schedule_tile.dart';
-import '../../models/lecturer_model.dart'; 
+import '../../models/lecturer_model.dart';
 import '../../services/lecturer_database_service.dart';
 import 'lecturer_request.dart';
-import 'package:firebase_messaging/firebase_messaging.dart'; 
-
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class LecturerHomeScreen extends StatefulWidget {
   final LecturerModel currentLecturer;
@@ -54,18 +53,22 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
     }
   }
 
-Future<void> _setupPushNotifications() async {
+  Future<void> _setupPushNotifications() async {
     FirebaseMessaging messaging = FirebaseMessaging.instance;
     NotificationSettings settings = await messaging.requestPermission();
-    
+
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
       String? token = await messaging.getToken();
       if (token != null) {
         // Saves the token to the 'lecturers' collection
-        await _dbService.saveFcmToken(widget.currentLecturer.uid, token);
+        await FirebaseFirestore.instance
+            .collection('lecturers')
+            .doc(widget.currentLecturer.uid)
+            .update({'fcmToken': token});
       }
     }
   }
+
   String _getTodayDateString() {
     DateTime now = DateTime.now();
     return "${now.day}/${now.month}/${now.year}";
@@ -74,7 +77,7 @@ Future<void> _setupPushNotifications() async {
   int _timeToMinutes(String timeStr) {
     try {
       timeStr = timeStr.trim().toUpperCase();
-      if (timeStr.isEmpty) return 9999; 
+      if (timeStr.isEmpty) return 9999;
       bool isPM = timeStr.contains('PM');
       String timePart = timeStr.replaceAll(RegExp(r'[^0-9:]'), '');
       List<String> parts = timePart.split(':');
@@ -84,12 +87,12 @@ Future<void> _setupPushNotifications() async {
       int hours = int.parse(parts[0]);
       int minutes = int.parse(parts[1]);
 
-      if (isPM && hours != 12) hours += 12; 
-      if (!isPM && hours == 12) hours = 0; 
+      if (isPM && hours != 12) hours += 12;
+      if (!isPM && hours == 12) hours = 0;
 
-      return hours * 60 + minutes; 
+      return hours * 60 + minutes;
     } catch (e) {
-      return 9999; 
+      return 9999;
     }
   }
 
@@ -116,18 +119,24 @@ Future<void> _setupPushNotifications() async {
 
             List<QueryDocumentSnapshot> allMeetings = snapshot.data?.docs ?? [];
 
-            List<QueryDocumentSnapshot> pendingRequests = allMeetings.where((doc) {
+            List<QueryDocumentSnapshot> pendingRequests = allMeetings.where((
+              doc,
+            ) {
               return doc['status'] == 'Pending';
             }).toList();
 
-            List<QueryDocumentSnapshot> todaysSchedule = allMeetings.where((doc) {
+            List<QueryDocumentSnapshot> todaysSchedule = allMeetings.where((
+              doc,
+            ) {
               return doc['date'] == todayString && doc['status'] == 'Accepted';
             }).toList();
 
             todaysSchedule.sort((a, b) {
               Map<String, dynamic> dataA = a.data() as Map<String, dynamic>;
               Map<String, dynamic> dataB = b.data() as Map<String, dynamic>;
-              return _timeToMinutes(dataA['time'] ?? '').compareTo(_timeToMinutes(dataB['time'] ?? '')); 
+              return _timeToMinutes(
+                dataA['time'] ?? '',
+              ).compareTo(_timeToMinutes(dataB['time'] ?? ''));
             });
 
             return SingleChildScrollView(
@@ -137,7 +146,10 @@ Future<void> _setupPushNotifications() async {
                 children: [
                   Text(
                     _getDynamicGreeting(),
-                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   Text(
                     widget.currentLecturer.name,
@@ -150,21 +162,21 @@ Future<void> _setupPushNotifications() async {
                     children: [
                       SummaryCard(
                         title: "Today",
-                        count: "${todaysSchedule.length}", 
+                        count: "${todaysSchedule.length}",
                         icon: Icons.calendar_today,
                         color: Colors.blue,
                         cardWidth: 120,
                       ),
                       SummaryCard(
                         title: "Pending",
-                        count: "${pendingRequests.length}", 
+                        count: "${pendingRequests.length}",
                         icon: Icons.error_outline,
                         color: Colors.orange,
                         cardWidth: 120,
                       ),
                       SummaryCard(
                         title: "Students",
-                        count: "$_totalStudents", 
+                        count: "$_totalStudents",
                         icon: Icons.people_outline,
                         color: Colors.green,
                         cardWidth: 120,
@@ -186,9 +198,13 @@ Future<void> _setupPushNotifications() async {
                     ),
 
                   ...todaysSchedule.map((doc) {
-                    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+                    Map<String, dynamic> data =
+                        doc.data() as Map<String, dynamic>;
                     return FutureBuilder<DocumentSnapshot>(
-                      future: FirebaseFirestore.instance.collection('users').doc(data['studentUid']).get(),
+                      future: FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(data['studentUid'])
+                          .get(),
                       builder: (context, userSnapshot) {
                         String studentName = "Loading...";
                         if (userSnapshot.hasData && userSnapshot.data!.exists) {
@@ -199,12 +215,19 @@ Future<void> _setupPushNotifications() async {
                           time: data['time'] ?? 'No time set',
                           type: data['moduleName'] ?? 'General',
                           onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => RequestsScreen(currentLecturer: widget.currentLecturer)));
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => RequestsScreen(
+                                  currentLecturer: widget.currentLecturer,
+                                ),
+                              ),
+                            );
                           },
                         );
                       },
                     );
-                  }), 
+                  }),
 
                   const SizedBox(height: 30),
 
@@ -215,15 +238,22 @@ Future<void> _setupPushNotifications() async {
                   const SizedBox(height: 15),
 
                   if (pendingRequests.isEmpty)
-                    const Text("No pending requests.", style: TextStyle(color: Colors.grey)),
+                    const Text(
+                      "No pending requests.",
+                      style: TextStyle(color: Colors.grey),
+                    ),
 
                   ...pendingRequests.map((doc) {
-                    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+                    Map<String, dynamic> data =
+                        doc.data() as Map<String, dynamic>;
                     final String sUid = data['studentUid'] ?? "";
                     final String mDate = data['date'] ?? "No Date";
 
                     return FutureBuilder<DocumentSnapshot>(
-                      future: FirebaseFirestore.instance.collection('users').doc(sUid).get(),
+                      future: FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(sUid)
+                          .get(),
                       builder: (context, userSnapshot) {
                         String studentName = "Loading...";
                         if (userSnapshot.hasData && userSnapshot.data!.exists) {
@@ -236,7 +266,10 @@ Future<void> _setupPushNotifications() async {
                             reason: data['reason'] ?? 'No reason provided',
                             time: "$mDate at ${data['time'] ?? 'No Time'}",
                             onApprove: () async {
-                              await _dbService.updateMeetingStatus(doc.id, 'Accepted');
+                              await _dbService.updateMeetingStatus(
+                                doc.id,
+                                'Accepted',
+                              );
                               await _dbService.notifyStudent(
                                 studentUid: sUid,
                                 status: 'Accepted',
@@ -244,11 +277,18 @@ Future<void> _setupPushNotifications() async {
                                 lecturerName: widget.currentLecturer.name,
                               );
                               if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Meeting Approved!')));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Meeting Approved!'),
+                                  ),
+                                );
                               }
                             },
                             onDecline: () async {
-                              await _dbService.updateMeetingStatus(doc.id, 'Declined');
+                              await _dbService.updateMeetingStatus(
+                                doc.id,
+                                'Declined',
+                              );
                               await _dbService.notifyStudent(
                                 studentUid: sUid,
                                 status: 'Declined',
@@ -256,7 +296,11 @@ Future<void> _setupPushNotifications() async {
                                 lecturerName: widget.currentLecturer.name,
                               );
                               if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Meeting Declined.')));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Meeting Declined.'),
+                                  ),
+                                );
                               }
                             },
                           ),

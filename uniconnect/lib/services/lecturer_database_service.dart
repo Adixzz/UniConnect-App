@@ -9,11 +9,19 @@ import 'package:flutter/services.dart' show rootBundle;
 class LecturerDatabaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // Fetch basic user data from Firestore
-  Future<DocumentSnapshot> getUserData(String uid) {
-    return _db.collection('lecturers').doc(uid).get();
-  }
+// --- UPDATED: Fetch basic user data using .where() ---
+  Future<DocumentSnapshot> getUserData(String uid) async {
+    final query = await _db
+        .collection('lecturers')
+        .where('uid', isEqualTo: uid)
+        .get();
 
+    if (query.docs.isNotEmpty) {
+      return query.docs.first; // Returns the actual document (e.g. KbBRAvt...)
+    } else {
+      throw Exception("Lecturer document not found for this UID!");
+    }
+  }
   Future<void> updateMeetingStatus(String meetingId, String status) async {
     await _db.collection('meetings').doc(meetingId).update({'status': status});
   }
@@ -234,27 +242,5 @@ class LecturerDatabaseService {
     }
   }
 
- // --- UPDATED: SAVE FCM TOKEN FOR LECTURER ---
-  Future<void> saveFcmToken(String uid, String token) async {
-    try {
-      // 1. Search for the document where the 'uid' FIELD matches
-      final query = await _db
-          .collection('lecturers')
-          .where('uid', isEqualTo: uid)
-          .get();
-
-      // 2. If it finds the document (e.g., KbBRAvtRRRvNYLRz1WSx), update it!
-      if (query.docs.isNotEmpty) {
-        await query.docs.first.reference.update({
-          'fcmToken': token, 
-          'lastTokenUpdate': FieldValue.serverTimestamp(),
-        });
-        debugPrint("Lecturer FCM Token saved successfully!");
-      } else {
-        debugPrint("Could not find a lecturer document with uid: $uid");
-      }
-    } catch (e) {
-      debugPrint("Error saving Lecturer FCM token: $e");
-    }
-  }
+ 
 }
