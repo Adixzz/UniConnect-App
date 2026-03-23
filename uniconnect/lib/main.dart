@@ -29,7 +29,7 @@ class MyApp extends StatelessWidget {
   Future<Widget> _getInitialScreen() async {
     User? user = FirebaseAuth.instance.currentUser;
     
-    if (user == null) return const AdminMainNav();
+    if (user == null) return const WelcomeScreen();
 
     final prefs = await SharedPreferences.getInstance();
     String? role = prefs.getString('user_role');
