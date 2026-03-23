@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'lecturer_home.dart';
 import 'availability_screen.dart';
 import 'lecturer_request.dart';
+import 'lecturer_notifications_screen.dart'; // --- NEW IMPORT ---
 import 'lecturer_settings.dart'; 
 import '../../models/lecturer_model.dart';
 
@@ -25,7 +26,7 @@ class _LecturerMainNavigationState extends State<LecturerMainNavigation> {
       LecturerHomeScreen(currentLecturer: widget.currentLecturer), 
       AvailabilityScreen(currentLecturer: widget.currentLecturer), 
       RequestsScreen(currentLecturer: widget.currentLecturer), 
-      
+      LecturerNotificationsScreen(currentLecturer: widget.currentLecturer), // --- NEW SCREEN ---
       LecturerSettingsScreen(currentLecturer: widget.currentLecturer), 
     ];
   }
@@ -43,16 +44,27 @@ class _LecturerMainNavigationState extends State<LecturerMainNavigation> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex, 
         onTap: _onItemTapped, 
-        type: BottomNavigationBarType.fixed,
+        type: BottomNavigationBarType.fixed, // Keeps all 5 icons visible
         selectedItemColor: const Color(0xFF1565C0), 
         unselectedItemColor: Colors.grey,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home), 
+            label: 'Home'
+          ),
           BottomNavigationBarItem(
             icon: Icon(Icons.calendar_month),
             label: 'Availability',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.group), label: 'Requests'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.group), 
+            label: 'Requests'
+          ),
+          // --- NEW TAB ---
+          BottomNavigationBarItem(
+            icon: Icon(Icons.notifications), 
+            label: 'Alerts'
+          ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),
             label: 'Settings',

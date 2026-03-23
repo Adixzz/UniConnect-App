@@ -3,7 +3,11 @@ import '../models/student_model.dart';
 import '../models/lecturer_model.dart';
 import '../models/club_model.dart';
 import '../models/faculty_module_model.dart';
-
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:googleapis_auth/auth_io.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 
 class StudentDatabaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -163,5 +167,62 @@ Future<void> addTestNotification(String uid) async {
     'type': 'meeting',
     'timestamp': FieldValue.serverTimestamp(),
   });
+}
+
+// Inside your StudentDatabaseService
+Future<void> notifyLecturer({
+  required String lecturerUid,
+  required String studentName,
+  required String date,
+  required String time,
+}) async {
+  try {
+    // 1. Save to History (So it shows in the Lecturer's 'Alerts' tab)
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(lecturerUid)
+        .collection('notifications')
+        .add({
+      'title': 'New Meeting Request!',
+      'body': '$studentName wants to meet on $date at $time.',
+      'type': 'meeting',
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+
+    // 2. Trigger Push Notification (So the lecturer's phone buzzes)
+    DocumentSnapshot lecturerDoc = await FirebaseFirestore.instance.collection('users').doc(lecturerUid).get();
+    String? token = lecturerDoc.get('fcmToken'); //
+
+    if (token != null && token.isNotEmpty) {
+      final jsonString = await rootBundle.loadString('assets/service-account.json');
+      final credentials = ServiceAccountCredentials.fromJson(jsonString);
+      final scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
+      final client = await clientViaServiceAccount(credentials, scopes);
+      final accessToken = client.credentials.accessToken.data;
+
+      const String projectId = 'uniconnect-133ae'; 
+      const String fcmUrl = 'https://fcm.googleapis.com/v1/projects/$projectId/messages:send';
+
+      await http.post(
+        Uri.parse(fcmUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+        body: jsonEncode({
+          'message': {
+            'token': token,
+            'notification': {
+              'title': 'New Meeting Request!',
+              'body': '$studentName requested a slot on $date.',
+            },
+          }
+        }),
+      );
+      client.close();
+    }
+  } catch (e) {
+    debugPrint("Lecturer Notification Error: $e");
+  }
 }
 }
