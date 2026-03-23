@@ -51,7 +51,6 @@ exports.sendTimetableNotification = onDocumentCreated(
 
       const response = await admin.messaging().sendEachForMulticast(message);
       console.log(`Successfully sent: ${response.successCount}`);
-      console.log(`Failed: ${response.failureCount}`);
       return null;
 
     } catch (error) {
@@ -75,5 +74,47 @@ exports.deleteUser = onCall(async (request) => {
   } catch (error) {
     const { HttpsError } = require("firebase-functions/v2/https");
     throw new HttpsError("internal", error.message);
+  }
+});
+
+exports.notifyLecturer = onCall(async (request) => {
+  const { lecturerUid, studentName, date, time } = request.data;
+
+  if (!lecturerUid) {
+    const { HttpsError } = require("firebase-functions/v2/https");
+    throw new HttpsError("invalid-argument", "lecturerUid is required");
+  }
+
+  try {
+    const snapshot = await admin.firestore()
+      .collection("lecturers")
+      .where("uid", "==", lecturerUid)
+      .get();
+
+    if (snapshot.empty) {
+      console.log("Lecturer not found");
+      return { success: false };
+    }
+
+    const lecturerData = snapshot.docs[0].data();
+    const token = lecturerData.fcmToken;
+
+    if (!token) {
+      console.log("No FCM token for lecturer");
+      return { success: false };
+    }
+
+    await admin.messaging().send({
+      token: token,
+      notification: {
+        title: "New Meeting Request!",
+        body: `${studentName} requested a slot on ${date} at ${time}.`,
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error notifying lecturer:", error);
+    return { success: false };
   }
 });
