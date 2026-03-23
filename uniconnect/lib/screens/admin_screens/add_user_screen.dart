@@ -10,10 +10,11 @@ class AddUserScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
-        automaticallyImplyLeading: false,
-        title: Image.asset(
-          'assets/images/logo.png',
-          height: 60,
+        foregroundColor: Colors.black,
+        elevation: 0,
+        title: const Text(
+          "Add User",
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
         ),
       ),
       backgroundColor: const Color(0xFFE0E0E0),
