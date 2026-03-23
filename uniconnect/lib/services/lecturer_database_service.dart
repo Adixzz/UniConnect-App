@@ -141,4 +141,32 @@ class LecturerDatabaseService {
       return DateTime(contextDate.year, contextDate.month, contextDate.day, 0, 0);
     }
   }
+
+  // --- NEW: MEETING MANAGEMENT ---
+  Future<void> updateMeetingStatus(String meetingId, String status) async {
+    await _db.collection('meetings').doc(meetingId).update({'status': status});
+  }
+
+  // --- NEW: SEND NOTIFICATION TO STUDENT ---
+  Future<void> notifyStudent({
+    required String studentUid,
+    required String status,
+    required String date,
+    required String lecturerName,
+  }) async {
+    try {
+      await _db
+          .collection('users')
+          .doc(studentUid)
+          .collection('notifications')
+          .add({
+        'title': 'Meeting $status!',
+        'body': 'Your meeting for $date has been $status by $lecturerName.',
+        'type': 'meeting',
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint("Notification Error: $e");
+    }
+  }
 }

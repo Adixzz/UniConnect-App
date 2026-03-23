@@ -139,4 +139,29 @@ class StudentDatabaseService {
   Future<DocumentSnapshot> getUserData(String uid) {
     return _db.collection('users').doc(uid).get();
   }
+
+  Future<void> saveFcmToken(String uid, String token) async {
+    try {
+      await _db.collection('users').doc(uid).update({
+        'fcmToken': token, 
+        'lastTokenUpdate': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print("Error saving FCM token to Firestore: $e");
+    }
+  }
+
+  // Add this to StudentDatabaseService
+Future<void> addTestNotification(String uid) async {
+  await FirebaseFirestore.instance
+      .collection('users')
+      .doc(uid)
+      .collection('notifications')
+      .add({
+    'title': 'Meeting Accepted!',
+    'body': 'Your meeting with the lecturer has been approved.',
+    'type': 'meeting',
+    'timestamp': FieldValue.serverTimestamp(),
+  });
+}
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:uniconnect/screens/student_screens/notification_history_screen.dart';
 import 'student_home.dart';
 import 'student_profile.dart';
 import 'student meeting_request_screen.dart';
@@ -18,7 +19,7 @@ class _StudentMainNavigationState extends State<StudentMainNavigation> {
     const StudentHomeScreen(),
     const MeetingsScreen(),
     const ClubListScreen(),
-    Center(child: Text("Alerts Screen")),
+    const NotificationHistoryScreen(),
     const ProfileScreen(),
   ];
 

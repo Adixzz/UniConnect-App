@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:uniconnect/services/student_database_service.dart';
-import 'package:uniconnect/models/student_model.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -15,6 +15,50 @@ class StudentHomeScreen extends StatefulWidget {
 class _StudentHomeScreenState extends State<StudentHomeScreen> {
   final String currentUid = FirebaseAuth.instance.currentUser?.uid ?? "";
   final StudentDatabaseService _dbService = StudentDatabaseService();
+  final Color primaryGreen = const Color(0xFF10B981); // Consistent theme
+
+  @override
+  void initState() {
+    super.initState();
+    // INITIALIZE NOTIFICATIONS ON LOAD
+    _setupPushNotifications();
+
+  }
+
+  // --- NOTIFICATION SETUP ---
+  Future<void> _setupPushNotifications() async {
+    final fcm = FirebaseMessaging.instance;
+
+    try {
+      // 1. Request permission
+      NotificationSettings settings = await fcm.requestPermission();
+
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        // 2. Get the unique device token
+        String? token = await fcm.getToken();
+
+        if (token != null && currentUid.isNotEmpty) {
+          // 3. Save it to the user's document using your service class
+          await _dbService.saveFcmToken(currentUid, token);
+        }
+      }
+
+      // 4. Handle Foreground Messages (Shows a SnackBar when app is open)
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("${message.notification?.title}: ${message.notification?.body}"),
+              backgroundColor: primaryGreen,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      });
+    } catch (e) {
+      debugPrint("Notification Setup Error: $e");
+    }
+  }
 
   // --- DYNAMIC GREETING HELPER ---
   String _getDynamicGreeting() {
@@ -60,20 +104,22 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- UPDATED: Dynamic Greeting ---
             Text(
-              _getDynamicGreeting(), 
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)
+              _getDynamicGreeting(),
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
-            Text(name, 
-              style: const TextStyle(fontSize: 18, color: Colors.grey)),
+            Text(
+              name,
+              style: const TextStyle(fontSize: 18, color: Colors.grey),
+            ),
           ],
         );
       },
     );
   }
 
- Widget _buildStatsRow() {
+  // 2. DYNAMIC STATS (Filtered for Joined Clubs)
+  Widget _buildStatsRow() {
     return Row(
       children: [
         Expanded(
@@ -87,16 +133,14 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         ),
         const SizedBox(width: 16),
         Expanded(
-          // UPDATED: Now queries for clubs where the user is a member
           child: StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('clubs')
-                .where('members', arrayContains: currentUid) //
+                .where('members', arrayContains: currentUid) 
                 .snapshots(),
             builder: (context, snapshot) {
-              // Count only the clubs returned by the filtered query
               int joinedCount = snapshot.hasData ? snapshot.data!.docs.length : 0;
-              return _statCard("Joined Clubs", joinedCount.toString(), Icons.groups, Colors.green);
+              return _statCard("Joined Clubs", joinedCount.toString(), Icons.groups, primaryGreen);
             },
           ),
         ),
@@ -109,8 +153,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Upcoming Meetings",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        const Text(
+          "Upcoming Meetings",
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 16),
         StreamBuilder<QuerySnapshot>(
           stream: _dbService.getStudentMeetings(currentUid),
@@ -125,7 +171,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               try {
                 DateTime meetingEndTime = _parseEndDateTime(data['date'], data['time']);
                 return meetingEndTime.isAfter(now);
-              } catch (e) { return true; }
+              } catch (e) {
+                return true;
+              }
             }).toList();
 
             if (filteredDocs.isEmpty) {
@@ -163,8 +211,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Pending Requests",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        const Text(
+          "Pending Requests",
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 16),
         StreamBuilder<QuerySnapshot>(
           stream: _dbService.getStudentMeetings(currentUid),
@@ -199,6 +249,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
   }
 
+  // --- HELPERS ---
+
   Widget _buildEmptyState({required IconData icon, required String message}) {
     return Container(
       width: double.infinity,
@@ -226,10 +278,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           Text(
             "Use the Meetings tab to request a new meeting.",
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey.shade400,
-            ),
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade400),
           ),
         ],
       ),
@@ -238,7 +287,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
   DateTime _parseEndDateTime(String dateStr, String timeRange) {
     try {
-      int year = 2026; 
+      int year = 2026;
       int month = DateTime.now().month;
       int day = DateTime.now().day;
 
@@ -249,25 +298,26 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         year = int.parse(dateParts[2]);
         if (year < 100) year += 2000;
       } else {
-        String cleanDate = dateStr.replaceAllMapped(
-          RegExp(r'([a-zA-Z]+)(\d+)'), 
-          (match) => '${match.group(1)} ${match.group(2)}'
-        ).trim();
+        String cleanDate = dateStr
+            .replaceAllMapped(
+              RegExp(r'([a-zA-Z]+)(\d+)'),
+              (match) => '${match.group(1)} ${match.group(2)}',
+            )
+            .trim();
         DateTime parsed = DateFormat("MMM d").parse(cleanDate);
         month = parsed.month;
         day = parsed.day;
       }
 
-      String timeToParse = timeRange.contains('-') 
-          ? timeRange.split('-')[1].trim() 
+      String timeToParse = timeRange.contains('-')
+          ? timeRange.split('-')[1].trim()
           : timeRange.trim();
-
       timeToParse = timeToParse.replaceAll('.', ':');
       final parts = timeToParse.split(" ");
       final hm = parts[0].split(":");
       int hour = int.parse(hm[0]);
       int min = int.parse(hm[1]);
-      
+
       if (parts[1].toUpperCase() == 'PM' && hour != 12) hour += 12;
       if (parts[1].toUpperCase() == 'AM' && hour == 12) hour = 0;
 
@@ -283,7 +333,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10),
+        ],
       ),
       child: Column(
         children: [
@@ -292,7 +344,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             child: Icon(icon, color: color, size: 20),
           ),
           const SizedBox(height: 12),
-          Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
           Text(label, style: const TextStyle(color: Colors.grey, fontSize: 14)),
         ],
       ),
@@ -310,9 +365,16 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: (status == 'Accepted' ? Colors.green : Colors.orange).withOpacity(0.1),
-            child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?', 
-              style: TextStyle(color: status == 'Accepted' ? Colors.green : Colors.orange, fontWeight: FontWeight.bold)),
+            backgroundColor:
+                (status == 'Accepted' ? Colors.green : Colors.orange)
+                    .withOpacity(0.1),
+            child: Text(
+              name.isNotEmpty ? name[0].toUpperCase() : '?',
+              style: TextStyle(
+                color: status == 'Accepted' ? Colors.green : Colors.orange,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -320,22 +382,28 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text(dateTime, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                Text(
+                  dateTime,
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
               ],
             ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
-              color: status == 'Accepted' ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+              color: status == 'Accepted'
+                  ? Colors.green.withOpacity(0.1)
+                  : Colors.orange.withOpacity(0.1),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Text(status, 
+            child: Text(
+              status,
               style: TextStyle(
-                color: status == 'Accepted' ? Colors.green : Colors.orange, 
-                fontSize: 10, 
-                fontWeight: FontWeight.bold
-              )
+                color: status == 'Accepted' ? Colors.green : Colors.orange,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
