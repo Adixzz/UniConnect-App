@@ -15,12 +15,12 @@ class ClubFormScreen extends StatefulWidget {
 class _ClubFormScreenState extends State<ClubFormScreen> {
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _studentIdSearchController = TextEditingController(); // for searching
+  final _studentIdSearchController = TextEditingController();
   final AdminDatabaseService _dbService = AdminDatabaseService();
 
   String? _selectedCategory;
-  String? _presidentUid;    // set after search, not typed manually
-  String? _presidentName;   // set after search, not typed manually
+  String? _presidentUid;
+  String? _presidentName;
   bool _isLoading = false;
   bool _isSearching = false;
 
@@ -37,7 +37,6 @@ class _ClubFormScreenState extends State<ClubFormScreen> {
       _nameController.text = widget.existingClub!.name;
       _descriptionController.text = widget.existingClub!.description;
       _selectedCategory = widget.existingClub!.category;
-      // pre-fill president info from existing club
       _presidentUid = widget.existingClub!.presidentID;
       _presidentName = widget.existingClub!.president;
     }
@@ -67,7 +66,6 @@ class _ClubFormScreenState extends State<ClubFormScreen> {
       return;
     }
 
-    // store the found student's uid and name
     setState(() {
       _presidentUid = student['uid'];
       _presidentName = student['name'];

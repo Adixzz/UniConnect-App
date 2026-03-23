@@ -146,7 +146,6 @@ class _ClubManageScreenState extends State<ClubManageScreen> {
                             ),
                           ],
                         ),
-                        // edit and delete buttons
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [

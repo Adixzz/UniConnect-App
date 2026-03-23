@@ -88,7 +88,6 @@ class _ManageUsersScreenState extends State<ManageUsersScreen>
         collection: collection,
       );
       _showSnackBar("$name deleted successfully");
-      // refresh whichever list was affected
       if (collection == 'lecturers') {
         _fetchLecturers();
       } else {
@@ -130,7 +129,6 @@ class _ManageUsersScreenState extends State<ManageUsersScreen>
             context,
             MaterialPageRoute(builder: (_) => const AddUserScreen()),
           );
-          // refresh both lists after adding
           _fetchLecturers();
           _fetchAdmins();
         },
@@ -140,7 +138,6 @@ class _ManageUsersScreenState extends State<ManageUsersScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          // lecturers tab
           _isLoadingLecturers
               ? const Center(child: CircularProgressIndicator())
               : _lecturers.isEmpty
@@ -182,7 +179,6 @@ class _ManageUsersScreenState extends State<ManageUsersScreen>
                       },
                     ),
 
-          // admins tab
           _isLoadingAdmins
               ? const Center(child: CircularProgressIndicator())
               : _admins.isEmpty

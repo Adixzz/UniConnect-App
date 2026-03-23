@@ -71,7 +71,7 @@ class StudentDatabaseService {
       return snapshot.docs
           .map(
             (doc) => LecturerModel.fromMap(doc.data()),
-          ) // Ensure you have a fromMap in LecturerModel
+          )
           .toList();
     } catch (e) {
       print("Error fetching all lecturers: $e");
@@ -91,7 +91,7 @@ class StudentDatabaseService {
           .where(
             'modules',
             arrayContains: moduleName,
-          ) // This works because your model uses a List<String>
+          )
           .get();
 
       return snapshot.docs
@@ -104,7 +104,6 @@ class StudentDatabaseService {
   }
 
   // 11. Save Meeting Request
-  // We've added the 'location' parameter to make it dynamic
   Future<void> saveMeetingRequest({
     required String studentUid,
     required String lecturerUid,
@@ -113,7 +112,7 @@ class StudentDatabaseService {
     required String date,
     required String time,
     required String reason,
-    required String location, // <--- Add this new parameter
+    required String location,
   }) async {
     try {
       await _db.collection('meetings').add({
@@ -124,7 +123,7 @@ class StudentDatabaseService {
         'date': date,
         'time': time,
         'reason': reason,
-        'location': location, // <--- Save the dynamic location here
+        'location': location,
         'status': 'Pending',
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -193,7 +192,6 @@ class StudentDatabaseService {
     required String time,
   }) async {
     try {
-      // 1. Save to History (This part is working perfectly!)
       await FirebaseFirestore.instance
           .collection('users')
           .doc(lecturerUid)
@@ -206,19 +204,16 @@ class StudentDatabaseService {
           });
 
       // 2. TRIGGER PUSH NOTIFICATION
-      // FIX: Use .where() to search for the uid field instead of assuming the Document ID!
       final query = await FirebaseFirestore.instance
           .collection('lecturers')
           .where('uid', isEqualTo: lecturerUid)
           .get();
 
-      // Safely check if the query actually found a matching lecturer
       if (query.docs.isNotEmpty) {
         DocumentSnapshot lecturerDoc = query.docs.first;
         Map<String, dynamic>? data =
             lecturerDoc.data() as Map<String, dynamic>?;
 
-        // Safely check if the fcmToken field exists in the map
         if (data != null && data.containsKey('fcmToken')) {
           String? token = data['fcmToken'];
 
@@ -268,7 +263,6 @@ class StudentDatabaseService {
     }
   }
 
-  // Save student's timetable selection to their profile
   Future<void> saveStudentTimetableSelection({
     required String uid,
     required String pathway,
@@ -291,7 +285,6 @@ class StudentDatabaseService {
     }
   }
 
-  // Fetch student's saved timetable selection
   Future<Map<String, dynamic>?> getStudentTimetableSelection(
       String uid) async {
     try {
@@ -313,7 +306,7 @@ class StudentDatabaseService {
     }
   }
 
-  // Fetch timetable by ID
+ 
   Future<Map<String, dynamic>?> getTimetableByGroupId(
       String timetableId) async {
     try {
@@ -329,7 +322,7 @@ class StudentDatabaseService {
     }
   }
 
-  // fetch all pathways
+ 
   Future<List<String>> getPathways() async {
     try {
       final snapshot = await _db.collection('pathways').get();
@@ -340,7 +333,7 @@ class StudentDatabaseService {
     }
   }
 
-  // fetch all degrees
+
   Future<List<String>> getDegrees() async {
     try {
       final snapshot = await _db.collection('degrees').get();

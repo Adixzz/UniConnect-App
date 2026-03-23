@@ -28,7 +28,6 @@ class _EditLecturerScreenState extends State<EditLecturerScreen> {
   @override
   void initState() {
     super.initState();
-    // pre-fill fields with existing lecturer data
     _nameController.text = widget.lecturer.name;
     _emailController.text = widget.lecturer.email;
     _staffIdController.text = widget.lecturer.staffId;

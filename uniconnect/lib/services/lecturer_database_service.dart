@@ -9,7 +9,7 @@ import 'package:flutter/services.dart' show rootBundle;
 class LecturerDatabaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // --- 1. FIX LOGOUT BUG: Fetch basic user data using .where() ---
+
   Future<DocumentSnapshot> getUserData(String uid) async {
     final query = await _db
         .collection('lecturers')
@@ -23,7 +23,6 @@ class LecturerDatabaseService {
     }
   }
 
-  // --- 2. FIX NOTIFICATIONS: Save FCM Token using .where() ---
   Future<void> saveFcmToken(String uid, String token) async {
     try {
       final query = await _db
@@ -45,7 +44,6 @@ class LecturerDatabaseService {
     }
   }
 
-  // --- 3. Keep Existing Methods ---
   Future<void> updateMeetingStatus(String meetingId, String status) async {
     await _db.collection('meetings').doc(meetingId).update({'status': status});
   }
@@ -61,7 +59,6 @@ class LecturerDatabaseService {
     }
   }
 
-  // Helper to parse "09.00 AM" style strings
   DateTime _parseTime(String timeStr, DateTime contextDate) {
     try {
       final parts = timeStr.trim().split(" ");
@@ -186,7 +183,6 @@ class LecturerDatabaseService {
         'timestamp': FieldValue.serverTimestamp(),
       });
 
-      // The student documents actually use their UID as the Document ID, so this is safe!
       DocumentSnapshot studentDoc = await _db.collection('users').doc(studentUid).get();
       String? token = studentDoc.get('fcmToken');
 

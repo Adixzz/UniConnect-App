@@ -20,7 +20,6 @@ class PushNotificationService {
     const InitializationSettings initSettings =
         InitializationSettings(android: androidSettings);
 
-    // use named parameter settings:
     await _localNotifications.initialize(settings: initSettings);
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {

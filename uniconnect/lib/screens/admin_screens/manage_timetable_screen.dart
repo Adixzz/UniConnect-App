@@ -170,7 +170,6 @@ class _TimetableManageScreenState extends State<TimetableManageScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // timetable title
                             Text(
                               "${timetable.pathway} - ${timetable.degree}",
                               style: const TextStyle(
@@ -186,7 +185,6 @@ class _TimetableManageScreenState extends State<TimetableManageScreen> {
                               style: TextStyle(color: Colors.grey[600]),
                             ),
                             const SizedBox(height: 4),
-                            // show sheet URL truncated
                             Text(
                               timetable.sheetUrl,
                               style: const TextStyle(
@@ -198,11 +196,9 @@ class _TimetableManageScreenState extends State<TimetableManageScreen> {
                             ),
                             const Divider(height: 20),
 
-                            // action buttons
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
-                                // notify button
                                 TextButton.icon(
                                   onPressed: () =>
                                       _notifyStudents(timetable),
@@ -216,7 +212,6 @@ class _TimetableManageScreenState extends State<TimetableManageScreen> {
                                     style: TextStyle(color: Colors.orange),
                                   ),
                                 ),
-                                // edit button
                                 TextButton.icon(
                                   onPressed: () async {
                                     await Navigator.push(
@@ -239,7 +234,6 @@ class _TimetableManageScreenState extends State<TimetableManageScreen> {
                                     style: TextStyle(color: Colors.blue),
                                   ),
                                 ),
-                                // delete button
                                 TextButton.icon(
                                   onPressed: () => _deleteTimetable(
                                       timetable.timetableId),

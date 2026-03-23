@@ -148,10 +148,9 @@ class AuthService {
           .get();
 
       if (snapshot.docs.isEmpty) {
-        return "Invalid Staff ID or Access Pin."; // Return error string
+        return "Invalid Staff ID or Access Pin.";
       }
 
-      // Success! Return the actual lecturer data
       Map<String, dynamic> lecturerData =
           snapshot.docs.first.data() as Map<String, dynamic>;
       return LecturerModel.fromMap(lecturerData);

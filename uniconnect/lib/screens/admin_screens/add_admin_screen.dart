@@ -11,7 +11,7 @@ class AddAdminScreen extends StatefulWidget {
 class _AddAdminScreenState extends State<AddAdminScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _adminIdController = TextEditingController(); // ADDED
+  final _adminIdController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final AuthService _authService = AuthService();
@@ -21,7 +21,7 @@ class _AddAdminScreenState extends State<AddAdminScreen> {
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
-    _adminIdController.dispose(); // ADDED
+    _adminIdController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -30,7 +30,7 @@ class _AddAdminScreenState extends State<AddAdminScreen> {
   Future<void> _addAdmin() async {
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
-    final adminId = _adminIdController.text.trim(); // ADDED
+    final adminId = _adminIdController.text.trim(); 
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
 
@@ -52,7 +52,7 @@ class _AddAdminScreenState extends State<AddAdminScreen> {
       name: name,
       email: email,
       password: password,
-      adminId: adminId, // ADDED
+      adminId: adminId,
     );
 
     if (mounted) setState(() => _isLoading = false);
@@ -93,7 +93,7 @@ class _AddAdminScreenState extends State<AddAdminScreen> {
                       _emailController, "Email", Icons.email),
                   const SizedBox(height: 16),
                   _buildTextField(
-                      _adminIdController, "Admin ID", Icons.badge), // ADDED
+                      _adminIdController, "Admin ID", Icons.badge),
                   const SizedBox(height: 16),
                   _buildTextField(
                     _passwordController,
