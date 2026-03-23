@@ -5,12 +5,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uniconnect/screens/admin_screens/admin_main_nav.dart';
 import 'firebase_options.dart';
 import 'screens/auth_screen/welcome_screen.dart';
-// Import your navigation screens
 import 'screens/student_screens/student_main_nav.dart';
 import 'screens/lecturer_screens/lecturer_main_nav.dart';
-// Import your models to pass to the nav screens
 import 'models/lecturer_model.dart';
 import 'services/lecturer_database_service.dart';
+import 'services/push_notification_service.dart'; // ADD THIS
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,6 +17,9 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // initialize push notifications
+  await PushNotificationService.initialize(); // ADD THIS
 
   runApp(const MyApp());
 }
@@ -28,18 +30,20 @@ class MyApp extends StatelessWidget {
   Future<Widget> _getInitialScreen() async {
     User? user = FirebaseAuth.instance.currentUser;
     
-    if (user == null) return const WelcomeScreen();
+    if (user == null) return const AdminMainNav();
 
     final prefs = await SharedPreferences.getInstance();
     String? role = prefs.getString('user_role');
 
     if (role == 'lecturer') {
-      final lecturerData = await LecturerDatabaseService().getUserData(user.uid);
+      final lecturerData =
+          await LecturerDatabaseService().getUserData(user.uid);
       return LecturerMainNavigation(
-        currentLecturer: LecturerModel.fromMap(lecturerData.data() as Map<String, dynamic>)
+        currentLecturer: LecturerModel.fromMap(
+            lecturerData.data() as Map<String, dynamic>),
       );
     } else {
-      return const StudentMainNavigation(); 
+      return const StudentMainNavigation();
     }
   }
 
@@ -49,14 +53,16 @@ class MyApp extends StatelessWidget {
       title: 'UniConnect',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6C63FF)),
+        colorScheme:
+            ColorScheme.fromSeed(seedColor: const Color(0xFF6C63FF)),
         useMaterial3: true,
       ),
       home: FutureBuilder<Widget>(
         future: _getInitialScreen(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            return const Scaffold(
+                body: Center(child: CircularProgressIndicator()));
           }
           return snapshot.data ?? const WelcomeScreen();
         },

@@ -4,6 +4,9 @@ import 'student_register.dart';
 import '../../services/auth_service.dart';
 import 'student_home.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';          // ADD
+import 'package:firebase_messaging/firebase_messaging.dart'; // ADD
+import '../../services/student_database_service.dart';       // ADD
 
 class StudentLoginScreen extends StatefulWidget {
   const StudentLoginScreen({super.key});
@@ -19,6 +22,31 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
 
   final AuthService _authService = AuthService();
 
+  // ADD THIS METHOD
+  Future<void> _initializeNotifications() async {
+    try {
+      NotificationSettings settings = await FirebaseMessaging.instance
+          .requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        final uid = FirebaseAuth.instance.currentUser?.uid;
+        if (uid != null) {
+          final token = await FirebaseMessaging.instance.getToken();
+          if (token != null) {
+            await StudentDatabaseService().saveFcmToken(uid, token);
+            print("FCM token saved successfully");
+          }
+        }
+      }
+    } catch (e) {
+      print("Error initializing notifications: $e");
+    }
+  }
+
   Future<void> _login() async {
     setState(() => _isLoading = true);
 
@@ -32,11 +60,15 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     if (errorMessage == null) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('user_role', 'student');
+
+      await _initializeNotifications(); // ADD THIS
+
       _showSnackBar("Login Successful!");
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const StudentMainNavigation()),
+          MaterialPageRoute(
+              builder: (context) => const StudentMainNavigation()),
         );
       }
     } else {
@@ -63,7 +95,8 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                   const SizedBox(height: 20),
                   const Text(
                     "Student Login",
-                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        fontSize: 26, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 40),
                   TextField(
