@@ -4,6 +4,7 @@ import 'package:uniconnect/screens/admin_screens/manage_users_screen.dart';
 import 'manage_users_screen.dart';
 import 'manage_club_screen.dart';
 import 'manage_timetable_screen.dart';
+import 'admin_settings.dart';
 
 class AdminMainNav extends StatefulWidget {
   const AdminMainNav({super.key});
@@ -19,6 +20,7 @@ class _AdminMainNavState extends State<AdminMainNav> {
     const ManageUsersScreen(),
     const ClubManageScreen(),  
     const TimetableManageScreen(),
+    const AdminSettingsScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -49,6 +51,10 @@ class _AdminMainNavState extends State<AdminMainNav> {
           BottomNavigationBarItem(
             icon: Icon(Icons.calendar_today),
             label: 'Manage Timetable',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Settings',
           ),
         ],
       ),
