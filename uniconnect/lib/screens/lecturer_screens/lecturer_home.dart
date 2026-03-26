@@ -52,21 +52,14 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
     }
   }
 
-  Future<void> _setupPushNotifications() async {
+Future<void> _setupPushNotifications() async {
     FirebaseMessaging messaging = FirebaseMessaging.instance;
     NotificationSettings settings = await messaging.requestPermission();
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
       String? token = await messaging.getToken();
       if (token != null) {
-        final query = await FirebaseFirestore.instance
-            .collection('lecturers')
-            .where('uid', isEqualTo: widget.currentLecturer.uid)
-            .get();
-
-        if (query.docs.isNotEmpty) {
-          await query.docs.first.reference.update({'fcmToken': token});
-        }
+        await _dbService.saveFcmToken(widget.currentLecturer.uid, token);
       }
     }
   }
@@ -100,9 +93,6 @@ class _LecturerHomeScreenState extends State<LecturerHomeScreen> {
 
     return PopScope(
       canPop: false, 
-      onPopInvoked: (didPop) {
-        if (didPop) return;
-      },
       child: Scaffold(
         backgroundColor: const Color(0xFFF8F9FB),
         body: SafeArea(
