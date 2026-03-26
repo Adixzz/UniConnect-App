@@ -176,6 +176,20 @@ class LecturerDatabaseService {
     required String lecturerName,
   }) async {
     try {
+      DocumentSnapshot studentDoc = await _db.collection('users').doc(studentUid).get();
+       
+       bool isEnabled = true; // Default safety
+      if (studentDoc.exists && studentDoc.data() != null) {
+        final data = studentDoc.data() as Map<String, dynamic>;
+        isEnabled = data['notif_meetings'] ?? true; 
+      }
+
+      if (!isEnabled) {
+        debugPrint("Skipping notification: Student has disabled meeting reminders.");
+        return; 
+      }
+
+      // 4. Proceed only if enabled: Add to Notification History
       await _db.collection('users').doc(studentUid).collection('notifications').add({
         'title': 'Meeting $status!',
         'body': 'Your meeting for $date has been $status by $lecturerName.',
@@ -183,7 +197,6 @@ class LecturerDatabaseService {
         'timestamp': FieldValue.serverTimestamp(),
       });
 
-      DocumentSnapshot studentDoc = await _db.collection('users').doc(studentUid).get();
       String? token = studentDoc.get('fcmToken');
 
       if (token != null && token.isNotEmpty) {

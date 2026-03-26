@@ -297,4 +297,15 @@ class StudentDatabaseService {
       return [];
     }
   }
+
+  Future<void> updateNotificationPreference(String uid, String key, bool value) async {
+  try {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .update({key: value});
+  } catch (e) {
+    debugPrint("Error updating preference: $e");
+  }
+}
 }

@@ -25,6 +25,7 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
   final Color primaryGreen = const Color(0xFF10B981);
   final _reasonController = TextEditingController();
   final StudentDatabaseService _dbService = StudentDatabaseService();
+  bool _isSubmitting = false; // Tracks if the database is currently busy
 
   List<Map<String, dynamic>> allAvailableSlots = [];
   List<String> uniqueDates = [];
@@ -47,6 +48,7 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
   void initState() {
     super.initState();
     _fetchAvailableSlots();
+    _reasonController.addListener(() => setState(() {}));
   }
 
   //TIME PARSER HELPER
@@ -173,8 +175,8 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+@override
+ Widget build(BuildContext context) {
     final filteredSlots = allAvailableSlots
         .where((s) => s['date'] == selectedDateChip)
         .toList();
@@ -197,92 +199,128 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildLecturerSummary(),
-            const SizedBox(height: 32),
+      // --- WRAP BODY IN A STACK ---
+      body: Stack(
+        children: [
+          // LAYER 0: Your original scrollable content
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildLecturerSummary(),
+                const SizedBox(height: 32),
 
-            const Text(
-              "Select Date",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            isLoading ? const SizedBox() : _buildDateFilterBar(),
-
-            const SizedBox(height: 24),
-            const Text(
-              "Available Times",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            if (widget.lecturer.timetableURL.isEmpty)
-              const Center(
-                child: Text(
-                  "This lecturer hasn't linked a timetable yet.",
-                  style: TextStyle(color: Colors.red),
+                const Text(
+                  "Select Date",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
-              )
-            else
-              isLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        color: Color(0xFF10B981),
+                const SizedBox(height: 12),
+                isLoading ? const SizedBox() : _buildDateFilterBar(),
+
+                const SizedBox(height: 24),
+                const Text(
+                  "Available Times",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                if (widget.lecturer.timetableURL.isEmpty)
+                  const Center(
+                    child: Text(
+                      "This lecturer hasn't linked a timetable yet.",
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  )
+                else
+                  isLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF10B981),
+                          ),
+                        )
+                      : _buildTimeSlotList(filteredSlots),
+
+                const SizedBox(height: 32),
+                const Text(
+                  "Reason for Meeting",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _reasonController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: "Briefly explain the purpose...",
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(color: Colors.grey.shade200),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 40),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed:
+                        (selectedSlot == null ||
+                         _reasonController.text.trim().isEmpty || 
+                         _isSubmitting) // Disable button while submitting
+                        ? null 
+                        : _submitMeetingRequest,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryGreen,
+                      disabledBackgroundColor: Colors.grey.shade300,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                    )
-                  : _buildTimeSlotList(filteredSlots),
-
-            const SizedBox(height: 32),
-            const Text(
-              "Reason for Meeting",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _reasonController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: "Briefly explain the purpose...",
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: Colors.grey.shade200),
-                ),
-              ),
-            ),
-            const SizedBox(height: 40),
-
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                onPressed: selectedSlot == null ? null : _submitMeetingRequest,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryGreen,
-                  disabledBackgroundColor: Colors.grey.shade300,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Text(
+                      "Submit Request",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
                   ),
                 ),
-                child: const Text(
-                  "Submit Request",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+              ],
+            ),
+          ),
+
+          // LAYER 1: The Loading Overlay
+          if (_isSubmitting)
+            Container(
+              color: Colors.black.withOpacity(0.4), // Dims the background
+              child: const Center(
+                child: Card(
+                  elevation: 5,
+                  child: Padding(
+                    padding: EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(color: Color(0xFF10B981)),
+                        SizedBox(height: 16),
+                        Text(
+                          "Checking Availability...",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -383,41 +421,76 @@ class _MeetingDetailsScreenState extends State<MeetingDetailsScreen> {
     );
   }
 
-  // --- UPDATED SUBMIT LOGIC ---
-  Future<void> _submitMeetingRequest() async {
+ Future<void> _submitMeetingRequest() async {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
 
+    final String reason = _reasonController.text.trim();
+    final String date = selectedSlot!['date'];
+    final String time = selectedSlot!['time'];
+
+    // Start loading state
+    setState(() => _isSubmitting = true);
+
     try {
-      // 1. Fetch Student Name (Needed for the notification text)
+      // 1. Duplicate Check
+      final duplicateQuery = await FirebaseFirestore.instance
+          .collection('meetings')
+          .where('studentUid', isEqualTo: currentUser.uid)
+          .where('lecturerUid', isEqualTo: widget.lecturer.uid)
+          .where('date', isEqualTo: date)
+          .where('time', isEqualTo: time)
+          .get();
+
+      bool alreadyBooked = duplicateQuery.docs.any((doc) => 
+          doc['status'] == 'Pending' || doc['status'] == 'Accepted');
+
+      if (alreadyBooked) {
+        setState(() => _isSubmitting = false); // Stop loading
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Slot already booked or pending."),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      // 2. Fetch Student Name
       DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).get();
       String studentName = userDoc.exists ? userDoc.get('name') : "A Student";
 
-      // 2. Save the request to the database
+      // 3. Save and Notify
       await _dbService.saveMeetingRequest(
         studentUid: currentUser.uid,
         lecturerUid: widget.lecturer.uid,
         lecturerName: widget.lecturer.name,
         moduleName: widget.selectedModuleName ?? "General Consultation",
-        date: selectedSlot!['date'],
-        time: selectedSlot!['time'],
-        reason: _reasonController.text,
+        date: date,
+        time: time,
+        reason: reason,
         location: widget.lecturer.location,
       );
 
-      // 3. MAGIC: Notify the Lecturer instantly
       await _dbService.notifyLecturer(
         lecturerUid: widget.lecturer.uid,
         studentName: studentName,
-        date: selectedSlot!['date'],
-        time: selectedSlot!['time'],
+        date: date,
+        time: time,
       );
 
+      setState(() => _isSubmitting = false); // Done
       _showSuccessDialog();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to send request: $e")));
+      setState(() => _isSubmitting = false); // Error, stop loading
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
     }
   }
+
   Widget _buildLecturerSummary() {
     return Container(
       padding: const EdgeInsets.all(20),

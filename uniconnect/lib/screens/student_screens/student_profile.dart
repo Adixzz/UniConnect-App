@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // --- NEW IMPORT ---
 import '../../services/student_database_service.dart';
-import '../auth_screen/welcome_screen.dart'; 
+import '../auth_screen/welcome_screen.dart';
 import '../../widgets/student_widgets/profile_activity_item.dart';
 import '../../widgets/student_widgets/profile_notification_item.dart';
 import '../../widgets/student_widgets/profile_setting_item.dart';
@@ -32,7 +32,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // 2. Sign out of Firebase
     await FirebaseAuth.instance.signOut();
     if (!mounted) return;
-    
+
     // 3. Navigate to Welcome Screen
     Navigator.pushAndRemoveUntil(
       context,
@@ -123,12 +123,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               const SizedBox(height: 6),
                               Text(
                                 email,
-                                style: const TextStyle(fontSize: 14, color: Colors.grey),
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
                               ),
                               const SizedBox(height: 6),
                               const Text(
                                 'Student Account',
-                                style: TextStyle(fontSize: 14, color: Colors.grey),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
                               ),
                             ],
                           ),
@@ -152,7 +158,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 10),
 
-              // --- DYNAMIC ACTIVITY CARD ---
               Container(
                 decoration: cardDecoration(),
                 child: Column(
@@ -161,13 +166,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     StreamBuilder<QuerySnapshot>(
                       stream: _dbService.getStudentMeetings(currentUid),
                       builder: (context, snapshot) {
-                        int count = snapshot.hasData ? snapshot.data!.docs.length : 0;
+                        int count = snapshot.hasData
+                            ? snapshot.data!.docs.length
+                            : 0;
                         return ProfileActivityItem(
                           icon: Icons.calendar_today_outlined,
                           iconColor: Colors.blue,
                           iconBgColor: const Color(0xFFEAF2FF),
                           title: 'Total Meetings',
                           value: count.toString(),
+                          showArrow: false, // Added: Remove the arrow
                         );
                       },
                     ),
@@ -176,13 +184,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     FutureBuilder<List>(
                       future: _dbService.getClubs(),
                       builder: (context, snapshot) {
-                        int count = snapshot.hasData ? snapshot.data!.length : 0;
+                        int count = snapshot.hasData
+                            ? snapshot.data!.length
+                            : 0;
                         return ProfileActivityItem(
                           icon: Icons.groups_2_outlined,
                           iconColor: Colors.purple,
                           iconBgColor: const Color(0xFFF3E8FF),
                           title: 'Clubs Joined',
                           value: count.toString(),
+                          showArrow: false, // Added: Remove the arrow
                         );
                       },
                     ),
@@ -213,6 +224,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       value: meetingReminders,
                       onChanged: (value) {
                         setState(() => meetingReminders = value);
+                        _dbService.updateNotificationPreference(currentUid, 'meetingReminders', value);
                       },
                     ),
                     const Divider(height: 1),
@@ -222,6 +234,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       value: clubAnnouncements,
                       onChanged: (value) {
                         setState(() => clubAnnouncements = value);
+                        _dbService.updateNotificationPreference(currentUid, 'notif_clubs', value);
                       },
                     ),
                   ],

@@ -6,6 +6,7 @@ class ProfileActivityItem extends StatelessWidget {
   final Color iconBgColor;
   final String title;
   final String value;
+  final bool showArrow;
 
   const ProfileActivityItem({
     super.key,
@@ -14,6 +15,7 @@ class ProfileActivityItem extends StatelessWidget {
     required this.iconBgColor,
     required this.title,
     required this.value,
+    this.showArrow = true,
   });
 
   @override
@@ -55,12 +57,12 @@ class ProfileActivityItem extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(
-            Icons.chevron_right,
-            color: Colors.grey,
-          ),
-        ],
+         if (showArrow)
+            const Icon(
+              Icons.chevron_right,
+              color: Colors.grey,
       ),
+    ]  ),
     );
   }
 }
