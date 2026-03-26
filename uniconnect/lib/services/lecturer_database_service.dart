@@ -231,4 +231,61 @@ class LecturerDatabaseService {
       debugPrint("Push Notification Error: $e");
     }
   }
+
+  // --- AUTO-COMPLETE LOGIC ---
+  Future<void> checkAndCompleteMeetings(List<QueryDocumentSnapshot> docs) async {
+    final now = DateTime.now();
+
+    for (var doc in docs) {
+      final data = doc.data() as Map<String, dynamic>;
+      
+      // Only check meetings that are currently 'Accepted'
+      if (data['status'] == 'Accepted') {
+        try {
+          // Use our parser to find the end time of the meeting
+          DateTime meetingEnd = _parseEndDateTime(data['date'], data['time']);
+          
+          // If current time is 1 hour past the meeting end time
+          if (now.isAfter(meetingEnd.add(const Duration(hours: 1)))) {
+            await updateMeetingStatus(doc.id, 'Completed');
+            debugPrint("Auto-completed meeting: ${doc.id}");
+          }
+        } catch (e) {
+          debugPrint("Auto-complete error for doc ${doc.id}: $e");
+        }
+      }
+    }
+  }
+
+  // Helper to parse your specific "09.00 AM - 10.00 AM" format
+  DateTime _parseEndDateTime(String dateStr, String timeRange) {
+    // 1. Parse Date (Handles both "MMM d" and "DD/MM/YYYY")
+    int year = DateTime.now().year;
+    int month = DateTime.now().month;
+    int day = DateTime.now().day;
+
+    if (dateStr.contains('/')) {
+      List<String> parts = dateStr.split('/');
+      day = int.parse(parts[0]);
+      month = int.parse(parts[1]);
+      year = int.parse(parts[2]);
+    } else {
+      String cleanDate = dateStr.replaceAllMapped(RegExp(r'([a-zA-Z]+)(\d+)'), (m) => '${m.group(1)} ${m.group(2)}');
+      DateTime parsed = DateFormat("MMM d").parse(cleanDate);
+      month = parsed.month;
+      day = parsed.day;
+    }
+
+    // 2. Parse End Time (The second part of "09.00 AM - 10.00 AM")
+    String endTimeStr = timeRange.split('-')[1].trim().replaceAll('.', ':');
+    final parts = endTimeStr.split(" ");
+    final hm = parts[0].split(":");
+    int hour = int.parse(hm[0]);
+    int min = int.parse(hm[1]);
+
+    if (parts[1].toUpperCase() == 'PM' && hour != 12) hour += 12;
+    if (parts[1].toUpperCase() == 'AM' && hour == 12) hour = 0;
+
+    return DateTime(year, month, day, hour, min);
+  }
 }

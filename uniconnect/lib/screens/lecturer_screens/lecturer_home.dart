@@ -101,6 +101,7 @@ Future<void> _setupPushNotifications() async {
                 .collection('meetings')
                 .where('lecturerUid', isEqualTo: widget.currentLecturer.uid)
                 .snapshots(),
+                
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
@@ -109,8 +110,11 @@ Future<void> _setupPushNotifications() async {
               if (snapshot.hasError) {
                 return const Center(child: Text("Something went wrong"));
               }
+              
 
               List<QueryDocumentSnapshot> allMeetings = snapshot.data?.docs ?? [];
+
+              _dbService.checkAndCompleteMeetings(allMeetings);
 
               List<QueryDocumentSnapshot> pendingRequests = allMeetings.where((doc) {
                 return doc['status'] == 'Pending';
