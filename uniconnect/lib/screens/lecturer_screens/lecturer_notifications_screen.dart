@@ -10,7 +10,9 @@ class LecturerNotificationsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+  return PopScope(
+    canPop: false,
+    child: Scaffold(
       backgroundColor: const Color(0xFFF4F5F9), // Matches lecturer theme
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -62,7 +64,7 @@ class LecturerNotificationsScreen extends StatelessWidget {
           );
         },
       ),
-    );
+    ));
   }
 
   // --- UI COMPONENTS ---

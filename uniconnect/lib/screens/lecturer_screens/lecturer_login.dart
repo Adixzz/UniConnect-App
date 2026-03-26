@@ -65,7 +65,7 @@ class _LecturerLoginScreenState extends State<LecturerLoginScreen> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => LecturerMainNavigation(currentLecturer: result),
+        builder: (context) => LecturerMainNavigation(lecturerUid: result.uid),
       ),
     );
   }

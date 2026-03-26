@@ -95,8 +95,10 @@ class _LecturerSettingsScreenState extends State<LecturerSettingsScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
+Widget build(BuildContext context) {
+  return PopScope(
+    canPop: false,
+    child: Scaffold(
       backgroundColor: const Color(0xFFF4F5F9),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -115,7 +117,7 @@ class _LecturerSettingsScreenState extends State<LecturerSettingsScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 
   Widget _buildProfileCard() {

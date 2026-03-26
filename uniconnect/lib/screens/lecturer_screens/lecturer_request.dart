@@ -47,9 +47,11 @@ class _RequestsScreenState extends State<RequestsScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
+ @override
+Widget build(BuildContext context) {
+  return PopScope(
+    canPop: false,
+    child: Scaffold(
       backgroundColor: const Color(0xFFF4F5F9),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -200,7 +202,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
           );
         },
       ),
-    );
+    ));
   }
 
   Widget _buildDateDropdown(List<String> availableDates) {

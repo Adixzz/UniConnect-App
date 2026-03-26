@@ -27,7 +27,20 @@ class _StudentMainNavigationState extends State<StudentMainNavigation> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false, // Prevents the back button from exiting the dashboard
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        
+        // Optional: Show a message to guide the user
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Use the logout button in Profile to exit."),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      },
+      child: Scaffold(
       body: screens[currentIndex],
 
       bottomNavigationBar: NavigationBar(
@@ -89,6 +102,6 @@ class _StudentMainNavigationState extends State<StudentMainNavigation> {
           ),
         ],
       ),
-    );
+    ));
   }
 }

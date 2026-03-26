@@ -10,6 +10,7 @@ import 'screens/lecturer_screens/lecturer_main_nav.dart';
 import 'models/lecturer_model.dart';
 import 'services/lecturer_database_service.dart';
 import 'services/push_notification_service.dart';
+import 'screens/lecturer_screens/lecturer_main_nav.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,35 +27,24 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  Future<Widget> _getInitialScreen() async {
-    try {
-      User? user = FirebaseAuth.instance.currentUser;
-      
-      if (user == null) return const WelcomeScreen();
+ Future<Widget> _getInitialScreen() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return const WelcomeScreen();
 
-      final prefs = await SharedPreferences.getInstance();
-      String? role = prefs.getString('user_role');
+    final prefs = await SharedPreferences.getInstance();
+    String? role = prefs.getString('user_role');
 
-      if (role == 'admin') {
-        return const AdminMainNav();
-      } else if (role == 'lecturer') {
-        final lecturerData = await LecturerDatabaseService().getUserData(user.uid);
-        return LecturerMainNavigation(
-          currentLecturer: LecturerModel.fromMap(
-              lecturerData.data() as Map<String, dynamic>),
-        );
-      } else if (role == 'student') {
-        return const StudentMainNavigation();
-      } else {
-        await FirebaseAuth.instance.signOut();
-        return const WelcomeScreen();
-      }
-    } catch (e) {
-      debugPrint("🚨 PERSISTENCE ERROR: $e");
+    if (role == 'admin') {
+      return const AdminMainNav();
+    } else if (role == 'lecturer') {
+      return LecturerMainNavigation(lecturerUid: user.uid); 
+    } else if (role == 'student') {
+      return const StudentMainNavigation();
+    } else {
+      await FirebaseAuth.instance.signOut();
       return const WelcomeScreen();
     }
   }
-
 
   @override
   Widget build(BuildContext context) {

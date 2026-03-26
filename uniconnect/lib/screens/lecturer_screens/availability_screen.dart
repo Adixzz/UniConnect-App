@@ -127,7 +127,9 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
         ? availableSlots 
         : availableSlots.where((s) => s['date'] == _selectedDate).toList();
 
-    return Scaffold(
+   return PopScope(
+    canPop: false,
+    child: Scaffold(
       backgroundColor: const Color(0xFFF8F9FD),
       appBar: AppBar(
         title: const Text("Availability Sync", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
@@ -155,7 +157,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
           ),
         ],
       ),
-    );
+    ));
   }
 
   Widget _buildFilterBar() {
