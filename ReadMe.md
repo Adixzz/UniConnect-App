@@ -33,5 +33,5 @@ Staff ID : 1234
 Access Pin : 123456 
 
 Admin Login - (Tap bottom right of welcome screen to access)
-email: sandevsamaranayake.nsbm.ac.lk
+email: sandevsamaranayake@gmail.com
 Password: adminpassword
