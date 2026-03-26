@@ -10,7 +10,7 @@ class AdminDatabaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
 
-  // 3. Fetch all faculties from Firestore
+  // 1. Fetch all faculties from Firestore
   Future<List<String>> getFaculties() async {
     try {
       final snapshot = await _db.collection('faculties').get();
@@ -21,7 +21,7 @@ class AdminDatabaseService {
     }
   }
 
-  // 4. Fetch all modules from Firestore
+  // 2. Fetch all modules from Firestore
   Future<List<String>> getModules() async {
     try {
       final snapshot = await _db.collection('modules').get();
@@ -32,7 +32,7 @@ class AdminDatabaseService {
     }
   }
 
-  // 5. Save a new club to Firestore
+  // 3. Save a new club to Firestore
   Future<void> saveClub(ClubModel club) async {
     try {
       await _db.collection('clubs').doc(club.clubId).set(club.toMap());
@@ -42,7 +42,7 @@ class AdminDatabaseService {
     }
   }
 
-  // 6. Update existing club in Firestore
+  // 4. Update existing club in Firestore
   Future<void> updateClub(ClubModel club) async {
     try {
       await _db.collection('clubs').doc(club.clubId).update({
@@ -57,7 +57,7 @@ class AdminDatabaseService {
     }
   }
 
-  // 7. Delete club from Firestore
+  // 5. Delete club from Firestore
   Future<void> deleteClub(String clubId) async {
     try {
       await _db.collection('clubs').doc(clubId).delete();
@@ -67,7 +67,7 @@ class AdminDatabaseService {
     }
   }
 
-  // 8. Fetch all clubs from Firestore
+  // 6. Fetch all clubs from Firestore
   Future<List<ClubModel>> getClubs() async {
     try {
       final snapshot = await _db.collection('clubs').get();
@@ -80,7 +80,7 @@ class AdminDatabaseService {
     }
   }
 
-  // 9. Search student by their student ID
+  // 7. Search student by their student ID
   Future<Map<String, dynamic>?> getStudentById(String studentId) async {
     try {
       final snapshot = await _db
@@ -102,7 +102,7 @@ class AdminDatabaseService {
     }
   }
 
-  // 10. Save new timetable entry to Firestore
+  // 8. Save new timetable entry to Firestore
   Future<void> saveTimetable(TimetableModel timetable) async {
     try {
       await _db
@@ -115,7 +115,7 @@ class AdminDatabaseService {
     }
   }
 
-  // 11. Fetch all timetables from Firestore
+  // 9. Fetch all timetables from Firestore
   Future<List<TimetableModel>> getTimetables() async {
     try {
       final snapshot = await _db.collection('timetables').get();
@@ -128,7 +128,7 @@ class AdminDatabaseService {
     }
   }
 
-  // 12. Fetch a specific timetable by its ID
+  // 10. Fetch a specific timetable by its ID
   Future<TimetableModel?> getTimetableById(String timetableId) async {
   try {
     final doc =
@@ -143,7 +143,7 @@ class AdminDatabaseService {
     }
   }
 
-  // 13. Delete timetable from Firestore
+  // 11. Delete timetable from Firestore
   Future<void> deleteTimetable(String timetableId) async {
     try {
       await _db.collection('timetables').doc(timetableId).delete();
@@ -153,7 +153,7 @@ class AdminDatabaseService {
     }
   }
 
-  // 14. Fetch all pathways from Firestore
+  // 12. Fetch all pathways from Firestore
   Future<List<String>> getPathways() async {
     try {
       final snapshot = await _db.collection('pathways').get();
@@ -164,7 +164,7 @@ class AdminDatabaseService {
     }
   }
 
-  // 15. Fetch all degrees from Firestore
+  // 13. Fetch all degrees from Firestore
   Future<List<String>> getDegrees() async {
     try {
       final snapshot = await _db.collection('degrees').get();
@@ -175,7 +175,7 @@ class AdminDatabaseService {
     }
   }
 
-  // 16. Save student timetable selection to their profile
+  // 14. Save student timetable selection to their profile
   Future<void> saveStudentTimetableSelection({
     required String uid,
     required String pathway,
@@ -198,7 +198,7 @@ class AdminDatabaseService {
     }
   }
 
-  // 17. Fetch student's saved timetable selection
+  // 15. Fetch student's saved timetable selection
   Future<Map<String, dynamic>?> getStudentTimetableSelection(
       String uid) async {
     try {
@@ -220,7 +220,7 @@ class AdminDatabaseService {
     }
   }
 
-  // 19. Fetch all lecturers
+  // 16. Fetch all lecturers
   Future<List<LecturerModel>> getLecturers() async {
     try {
       final snapshot = await _db
@@ -235,7 +235,7 @@ class AdminDatabaseService {
     }
   }
 
-  // 20. Fetch all admins
+  // 17. Fetch all admins
   Future<List<AdminModel>> getAdmins() async {
   try {
     final snapshot = await _db.collection('admins').get();
@@ -248,7 +248,7 @@ class AdminDatabaseService {
     }
   }
 
-  // 21. Delete user from both Firebase Auth and Firestore
+  // 18. Delete user from both Firebase Auth and Firestore
   Future<void> deleteUserCompletely({
     required String uid,
     required String collection,
@@ -265,7 +265,7 @@ class AdminDatabaseService {
     }
   }
 
-  // 22. Update lecturer in Firestore
+  // 19. Update lecturer in Firestore
   Future<void> updateLecturer(LecturerModel lecturer) async {
     try {
       await _db
@@ -278,7 +278,7 @@ class AdminDatabaseService {
     }
   }
 
-  // 23. Update admin in Firestore
+  // 20. Update admin in Firestore
   Future<void> updateAdmin(AdminModel admin) async {
   try {
     await _db
